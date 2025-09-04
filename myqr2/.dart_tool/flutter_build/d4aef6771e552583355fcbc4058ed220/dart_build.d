@@ -1,0 +1,1 @@
+ C:\\Users\\USER\\Documents\\GitHub\\Flutter2025\\myqr2\\.dart_tool\\flutter_build\\d4aef6771e552583355fcbc4058ed220\\dart_build_result.json: 

@@ -1,0 +1,2 @@
+C:/Users/USER/Documents/GitHub/Flutter2025/myqr2/build/.cxx/Debug/4x4h171p/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/USER/Documents/GitHub/Flutter2025/myqr2/build/.cxx/Debug/4x4h171p/arm64-v8a/CMakeFiles/rebuild_cache.dir

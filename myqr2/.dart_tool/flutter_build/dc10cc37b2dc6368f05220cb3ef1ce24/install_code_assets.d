@@ -1,0 +1,1 @@
+ C:\\Users\\USER\\Documents\\GitHub\\Flutter2025\\myqr2\\.dart_tool\\flutter_build\\dc10cc37b2dc6368f05220cb3ef1ce24\\native_assets.json: 
