@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 class ScanHistoryItem {
   final String data;

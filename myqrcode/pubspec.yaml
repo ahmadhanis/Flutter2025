@@ -8,18 +8,18 @@ environment:
 
 dependencies:
   add_2_calendar: ^3.0.1
-  contacts_service: ^0.6.3
+  flutter_contacts: ^1.1.9+2
   flutter:
     sdk: flutter
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.0+1
   qr_code_scanner: ^1.0.1
-  shared_preferences: ^2.2.3
+  shared_preferences: ^2.5.3
   url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true

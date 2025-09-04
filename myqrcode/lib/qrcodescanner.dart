@@ -7,8 +7,8 @@ import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:contacts_service/contacts_service.dart';
-import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:add_2_calendar/add_2_calendar.dart' as calendar;
+import 'package:flutter_contacts/flutter_contacts.dart' as contacts;
 
 class QrCodeScanner extends StatefulWidget {
   const QrCodeScanner({super.key});
@@ -115,16 +115,26 @@ class _QrCodeScannerState extends State<QrCodeScanner> {
                     orElse: () => '');
                 final phone =
                     telLine.isNotEmpty ? telLine.split(':').last.trim() : '';
-                final contact = Contact(
-                  givenName: name,
-                  phones: phone.isNotEmpty
-                      ? [Item(label: "mobile", value: phone)]
-                      : [],
-                );
-                await ContactsService.addContact(contact);
+                final contact = contacts.Contact()
+                  ..name.first = name
+                  ..phones = phone.isNotEmpty
+                      ? [
+                          contacts.Phone(phone,
+                              label: contacts.PhoneLabel.mobile)
+                        ]
+                      : [];
+
+                // Save to contacts
+                await contacts.FlutterContacts.insertContact(contact);
+
+                // Go back to previous screen
                 Navigator.pop(context);
+              } else {
+                // Show permission denied message
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Contact saved!")),
+                  const SnackBar(
+                    content: Text('Permission to access contacts denied'),
+                  ),
                 );
               }
             }));
@@ -142,18 +152,19 @@ class _QrCodeScannerState extends State<QrCodeScanner> {
 
           case 'Event/Calendar':
             actions.add(
-                _buildSheetButton('Add to Calendar', Icons.calendar_today, () {
-              final now = DateTime.now();
-              final event = Event(
-                title: 'Scanned QR Event',
-                description: qrText!,
-                location: 'QR Location',
-                startDate: now,
-                endDate: now.add(const Duration(hours: 1)),
-              );
-              Add2Calendar.addEvent2Cal(event);
-              Navigator.pop(context);
-            }));
+              _buildSheetButton('Add to Calendar', Icons.calendar_today, () {
+                final now = DateTime.now();
+                final event = calendar.Event(
+                  title: 'Scanned QR Event',
+                  description: qrText!,
+                  location: 'QR Location',
+                  startDate: now,
+                  endDate: now.add(const Duration(hours: 1)),
+                );
+                calendar.Add2Calendar.addEvent2Cal(event);
+                Navigator.pop(context);
+              }),
+            );
             break;
 
           default:
@@ -278,9 +289,9 @@ class _QrCodeScannerState extends State<QrCodeScanner> {
                     const BorderRadius.vertical(top: Radius.circular(30)),
               ),
               child: qrText == null
-                  ? Column(
+                  ? const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
+                      children: [
                         Text('Scan a QR code to see the result',
                             style: TextStyle(fontSize: 16)),
                         SizedBox(height: 12),
