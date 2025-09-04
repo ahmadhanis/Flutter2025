@@ -238,6 +238,25 @@ class _MyTanahCalState extends State<MyTanahCal> {
               centerTitle: true,
               actions: [
                 IconButton(
+                  tooltip: 'Reset',
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    setState(() {
+                      _cukaiController.clear();
+                      _hektarController.clear();
+                      _cukai = 0;
+                      _hektar = 0;
+                      divisions.clear();
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Skrin telah direset.'),
+                        duration: Duration(milliseconds: 1200),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
                   tooltip: 'Cetak/Export PDF',
                   onPressed: () => _printPdf(
                     totalFraction: totalFraction,
