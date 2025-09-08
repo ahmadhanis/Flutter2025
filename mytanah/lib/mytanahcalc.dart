@@ -18,6 +18,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
   // Controllers
   final TextEditingController _cukaiController = TextEditingController();
   final TextEditingController _hektarController = TextEditingController();
+  final TextEditingController _geranController = TextEditingController();
+  final TextEditingController _lotController = TextEditingController();
 
   // State nilai
   double _cukai = 0;
@@ -60,6 +62,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
   void dispose() {
     _cukaiController.dispose();
     _hektarController.dispose();
+    _geranController.dispose();
+    _lotController.dispose();
     for (var d in divisions) {
       d.numeratorController.dispose();
       d.denominatorController.dispose();
@@ -145,11 +149,14 @@ class _MyTanahCalState extends State<MyTanahCal> {
           ),
         ),
         build: (context) => [
+         pw.Text('Laporan Pembahagian Tanah',
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
           pw.Text(
-            'Laporan Pembahagian Tanah',
-            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            'No Geran: ${_geranController.text}  |  No Lot: ${_lotController.text}',
+            style: const pw.TextStyle(fontSize: 10),
           ),
-          pw.SizedBox(height: 4),
+          pw.SizedBox(height: 6),
           pw.Text(
             'Ringkasan: Hektar=${fmtD(hektar)}  |  Jumlah Pecahan=${fmtD(totalFraction)} '
             '(${(totalFraction * 100).toStringAsFixed(2)}%)'
@@ -271,6 +278,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
                     setState(() {
                       _cukaiController.clear();
                       _hektarController.clear();
+                      _geranController.clear();
+                      _lotController.clear();
                       _cukai = 0;
                       _hektar = 0;
                       divisions.clear();
@@ -333,40 +342,91 @@ class _MyTanahCalState extends State<MyTanahCal> {
                               spacing: 10,
                               runSpacing: 8,
                               children: [
-                                SizedBox(
-                                  width: isMedium ? 280 : double.infinity,
-                                  child: TextField(
-                                    controller: _cukaiController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Jumlah Cukai (RM)',
-                                      prefixText: 'RM ',
-                                      hintText: 'cth: 1200.00',
-                                      prefixIcon: Icon(Icons.payments_outlined),
-                                    ),
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
+                                // Row 1: No Geran & No Lot
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 6,
                                         ),
-                                    onChanged: _updateCukai,
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: isMedium ? 280 : double.infinity,
-                                  child: TextField(
-                                    controller: _hektarController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Jumlah Hektar',
-                                      hintText: 'cth: 1.5',
-                                      prefixIcon: Icon(
-                                        Icons.landscape_outlined,
+                                        child: TextField(
+                                          controller: _geranController,
+                                          decoration: const InputDecoration(
+                                            labelText: 'No Geran',
+                                            prefixIcon: Icon(
+                                              Icons.description_outlined,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: TextField(
+                                          controller: _lotController,
+                                          decoration: const InputDecoration(
+                                            labelText: 'No Lot',
+                                            prefixIcon: Icon(
+                                              Icons.map_outlined,
+                                            ),
+                                          ),
                                         ),
-                                    onChanged: _updateHektar,
-                                  ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 10),
+
+                                // Row 2: Jumlah Cukai & Jumlah Hektar
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 6,
+                                        ),
+                                        child: TextField(
+                                          controller: _cukaiController,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Jumlah Cukai (RM)',
+                                            prefixText: 'RM ',
+                                            hintText: 'cth: 1200.00',
+                                            prefixIcon: Icon(
+                                              Icons.payments_outlined,
+                                            ),
+                                          ),
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          onChanged: _updateCukai,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: TextField(
+                                          controller: _hektarController,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Jumlah Hektar',
+                                            hintText: 'cth: 1.5',
+                                            prefixIcon: Icon(
+                                              Icons.landscape_outlined,
+                                            ),
+                                          ),
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          onChanged: _updateHektar,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
