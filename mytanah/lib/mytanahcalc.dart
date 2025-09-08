@@ -68,7 +68,7 @@ class _MyTanahCalState extends State<MyTanahCal> {
   }
 
   // ========= PRINT TO PDF =========
-  Future<void> _printPdf({
+  Future<Uint8List> _buildPdfBytes({
     required double totalFraction,
     required double hektar,
     required double cukai,
@@ -77,14 +77,14 @@ class _MyTanahCalState extends State<MyTanahCal> {
     String fmtD(double v, {int f = 7}) => v.toStringAsFixed(f);
     String fmtMoney(double v) => v.toStringAsFixed(2);
 
-    // ---------- Header: merge columns ----------
+    // ---------- Header: merged "Pecahan (n/d)" ----------
     final rows = <pw.TableRow>[
       pw.TableRow(
         decoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFFEFEFEF)),
         children: [
           _cell('No.', bold: true),
-          _cell('Pecahan (n/d)', bold: true), // merged column
-          _cell('Pecahan', bold: true), // decimal value
+          _cell('Pecahan (n/d)', bold: true),
+          _cell('Pecahan', bold: true),
           _cell('Hektar', bold: true),
           _cell('Ekar', bold: true),
           _cell('Relung', bold: true),
@@ -97,8 +97,6 @@ class _MyTanahCalState extends State<MyTanahCal> {
 
     for (int i = 0; i < divisions.length; i++) {
       final d = divisions[i];
-
-      // Build "n/d" display safely
       final numTxt = d.numeratorController.text.trim();
       final denTxt = d.denominatorController.text.trim();
       final fracNd = (numTxt.isEmpty || denTxt.isEmpty)
@@ -117,8 +115,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
         pw.TableRow(
           children: [
             _cell('${i + 1}'),
-            _cell(fracNd), // merged n/d
-            _cell(fraction.isFinite ? fmtD(fraction) : '0'), // decimal
+            _cell(fracNd),
+            _cell(fraction.isFinite ? fmtD(fraction) : '0'),
             _cell(fmtD(divisionHektar)),
             _cell(fmtD(divisionEkar)),
             _cell(fmtD(divisionRelung)),
@@ -168,9 +166,38 @@ class _MyTanahCalState extends State<MyTanahCal> {
       ),
     );
 
+    return doc.save();
+  }
+
+  Future<void> _printPdf({
+    required double totalFraction,
+    required double hektar,
+    required double cukai,
+  }) async {
+    final bytes = await _buildPdfBytes(
+      totalFraction: totalFraction,
+      hektar: hektar,
+      cukai: cukai,
+    );
     await Printing.layoutPdf(
-      onLayout: (format) async => doc.save(),
+      onLayout: (format) async => bytes,
       name: 'laporan_pembahagian_tanah.pdf',
+    );
+  }
+
+  Future<void> _sharePdf({
+    required double totalFraction,
+    required double hektar,
+    required double cukai,
+  }) async {
+    final bytes = await _buildPdfBytes(
+      totalFraction: totalFraction,
+      hektar: hektar,
+      cukai: cukai,
+    );
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'laporan_pembahagian_tanah.pdf',
     );
   }
 
@@ -259,11 +286,26 @@ class _MyTanahCalState extends State<MyTanahCal> {
                 IconButton(
                   tooltip: 'Cetak/Export PDF',
                   onPressed: () => _printPdf(
-                    totalFraction: totalFraction,
+                    totalFraction: divisions.fold(
+                      0.0,
+                      (sum, d) => sum + d.fraction,
+                    ),
                     hektar: _hektar,
                     cukai: _cukai,
                   ),
                   icon: const Icon(Icons.picture_as_pdf_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Kongsi PDF',
+                  icon: const Icon(Icons.share_outlined),
+                  onPressed: () => _sharePdf(
+                    totalFraction: divisions.fold(
+                      0.0,
+                      (sum, d) => sum + d.fraction,
+                    ),
+                    hektar: _hektar,
+                    cukai: _cukai,
+                  ),
                 ),
               ],
             ),
