@@ -93,7 +93,7 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
           children: [
             // Dropdown for number of corners
             DropdownButtonFormField<int>(
-              value: _selectedPenjuru,
+              initialValue: _selectedPenjuru,
               decoration: InputDecoration(
                 labelText: 'Pilih Jumlah Penjuru',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -179,7 +179,6 @@ class PolygonPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    Path path = Path();
     double centerX = size.width / 2;
     double centerY = size.height / 2;
     double maxLength = lengthControllers.map((c) => double.tryParse(c.text) ?? 0).reduce((a, b) => a > b ? a : b);
