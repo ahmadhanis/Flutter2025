@@ -1119,18 +1119,19 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
   }
 
   _Result _computeFaraidFromUi() {
+    // 1) Collate counts (alive only)
     final counts = <String, int>{};
     final blockedNotes = <String>[];
     for (final m in _members) {
       final c = int.tryParse(m.countController.text.trim()) ?? 0;
-      if (!m.alive || c <= 0) continue; // only alive members count
+      if (!m.alive || c <= 0) continue;
       counts[m.relationKey] = (counts[m.relationKey] ?? 0) + c;
     }
 
     final deceasedMale = _deceasedGender == Gender.male;
     final deceasedFemale = _deceasedGender == Gender.female;
 
-    // Extract common counts
+    // Common keys
     final suami = counts['suami'] ?? 0;
     final isteri = counts['isteri'] ?? 0;
     final anakL = counts['anakL'] ?? 0;
@@ -1138,44 +1139,61 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
     final bapa = counts['bapa'] ?? 0;
     final ibu = counts['ibu'] ?? 0;
 
-    // Siblings (for ibu 1/6 rule)
+    // Siblings (for ibu rule)
     final fullBro = counts['sb_seibuSebapa_L'] ?? 0;
     final fullSis = counts['ss_seibuSebapa_P'] ?? 0;
     final conBro = counts['sb_sebapa_L'] ?? 0;
     final conSis = counts['ss_sebapa_P'] ?? 0;
     final uterine = counts['saudaraSeibu'] ?? 0;
     final siblingsAny = fullBro + fullSis + conBro + conSis + uterine;
+
+    // Level-2
+    final cucuL = counts['cucuL'] ?? 0; // cucu lelaki melalui anak lelaki
+    final cucuP = counts['cucuP'] ?? 0; // cucu perempuan melalui anak lelaki
+    final datuk = counts['datuk'] ?? 0; // datuk sebelah bapa
+    final nenekBapa = counts['nenekBapa'] ?? 0; // nenek sebelah bapa
+    final nenekIbu = counts['nenekIbu'] ?? 0; // nenek sebelah ibu
+
     final hasSon = anakL > 0;
     final hasChild = (anakL + anakP) > 0;
+    final hasDescendants =
+        hasChild || (cucuL + cucuP) > 0; // keturunan lelaki line
 
-    // Hijab (very basic notes for popup)
-    // Example: if hasSon, many collaterals blocked (not fully listed here, just surface note)
+    // 2) Hijab (notes only; blocking is implicit via not assigning shares)
     if (hasSon) {
+      if (cucuL + cucuP > 0) {
+        blockedNotes.add(
+          'Cucu (melalui anak lelaki) terhalang oleh anak lelaki.',
+        );
+      }
       if (fullBro + fullSis + conBro + conSis + uterine > 0) {
         blockedNotes.add('Saudara/saudari terhalang oleh anak lelaki.');
       }
     }
-    if (bapa > 0 && (counts['datuk'] ?? 0) > 0) {
+    if (bapa > 0 && datuk > 0) {
       blockedNotes.add('Datuk (sebelah bapa) terhalang oleh bapa.');
     }
     if (hasChild || bapa > 0) {
       if (uterine > 0)
         blockedNotes.add('Saudara seibu terhalang oleh anak/bapa.');
     }
-    // Shares (group totals by relationKey)
+    if (ibu > 0 && (nenekBapa + nenekIbu) > 0) {
+      blockedNotes.add('Nenek terhalang oleh ibu.');
+    }
+
+    // 3) Shares (group totals) — furud & asabah
     final furud = <String, double>{};
     final asabah = <String, double>{};
 
     // Spouse
     if (deceasedMale && isteri > 0) {
-      furud['isteri'] = hasChild
-          ? (1 / 8)
-          : (1 / 4); // shared later across wives
+      furud['isteri'] = hasChild ? (1 / 8) : (1 / 4); // split equally later
     }
     if (deceasedFemale && suami > 0) {
       furud['suami'] = hasChild ? (1 / 4) : (1 / 2);
     }
-    // Ibu
+
+    // Ibu (1/3; turun 1/6 jika ada anak / >=2 saudara)
     if (ibu > 0) {
       final ibuShare = (hasChild || siblingsAny >= 2) ? (1 / 6) : (1 / 3);
       furud['ibu'] = ibuShare;
@@ -1184,22 +1202,47 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
     // Bapa
     if (bapa > 0) {
       if (hasChild) {
-        furud['bapa'] = 1 / 6; // may also take residu later if exists
+        furud['bapa'] = 1 / 6; // may also take residu later
       } else {
-        // no fixed share now; father will be asabah (residu)
+        // no fixed share; bapa berpotensi asabah nanti
       }
     }
 
-    // Anak perempuan (only when no sons)
+    // Anak perempuan (tiada anak lelaki)
     if (anakP > 0 && anakL == 0) {
-      if (anakP == 1) {
-        furud['anakP'] = 1 / 2;
+      furud['anakP'] = (anakP == 1) ? (1 / 2) : (2 / 3);
+    }
+
+    // --- Level-2 Furud (bila layak) ---
+
+    // Cucu perempuan (melalui anak lelaki) — hanya jika TIADA anak (lelaki/perempuan)
+    if (anakL + anakP == 0) {
+      if (cucuP > 0 && cucuL == 0) {
+        // share seperti anak perempuan
+        furud['cucuP'] = (cucuP == 1) ? (1 / 2) : (2 / 3);
+      }
+      // (Nota lanjutan “tamam 2/3” tidak dimasukkan di patch ringkas ini)
+    }
+
+    // Nenek — hanya jika ibu tiada
+    if (ibu == 0) {
+      if (nenekIbu > 0) furud['nenekIbu'] = 1 / 6;
+      if (nenekBapa > 0)
+        furud['nenekBapa'] =
+            1 / 6; // ringkas; perincian hijab nenek boleh ditambah
+    }
+
+    // Datuk (sebelah bapa) — hanya jika bapa tiada
+    if (bapa == 0 && datuk > 0) {
+      if (hasDescendants) {
+        // Ada keturunan lelaki-line → datuk dapat 1/6 (dan mungkin residu)
+        furud['datuk'] = 1 / 6;
       } else {
-        furud['anakP'] = 2 / 3;
+        // Tanpa keturunan → datuk akan jadi asabah (residu) nanti
       }
     }
 
-    // Sum and apply 'Awl if > 1
+    // 4) ‘Awl jika perlu
     double furudTotal = furud.values.fold(0.0, (s, v) => s + v);
     bool awlApplied = false;
     if (furudTotal > 1.0 + 1e-12) {
@@ -1211,13 +1254,12 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
       furudTotal = 1.0;
     }
 
-    // Residu
+    // 5) Residu → Asabah (tertib)
     double residu = 1.0 - furudTotal;
 
-    // Asabah distribution (children first)
     if (residu > 1e-12) {
+      // a) Anak lelaki (± anak perempuan) 2:1
       if (anakL > 0) {
-        // sons (+ daughters) as asabah: 2:1
         final units = (2 * anakL) + anakP;
         if (units > 0) {
           final anakLShare = residu * (2 * anakL) / units;
@@ -1228,18 +1270,38 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
             asabah['anakP'] = (asabah['anakP'] ?? 0) + anakPShare;
           residu = 0.0;
         }
-      } else if (bapa > 0) {
-        // no sons; father takes residu as asabah
+      }
+      // b) Jika TIADA anak → cucu melalui anak lelaki 2:1
+      else if ((anakL + anakP) == 0 &&
+          (cucuL > 0 || (cucuP > 0 && cucuL > 0))) {
+        final units = (2 * cucuL) + cucuP;
+        if (units > 0) {
+          final cucuLShare = residu * (2 * cucuL) / units;
+          final cucuPShare = residu * (cucuP) / units;
+          if (cucuLShare > 0)
+            asabah['cucuL'] = (asabah['cucuL'] ?? 0) + cucuLShare;
+          if (cucuPShare > 0)
+            asabah['cucuP'] = (asabah['cucuP'] ?? 0) + cucuPShare;
+          residu = 0.0;
+        }
+      }
+      // c) Bapa ambil residu jika ada
+      else if (bapa > 0) {
         asabah['bapa'] = (asabah['bapa'] ?? 0) + residu;
         residu = 0.0;
       }
-      // (Extend: next asabah layers like cucu lelaki, brothers, etc.)
+      // d) Datuk (jika bapa tiada)
+      else if (datuk > 0) {
+        asabah['datuk'] = (asabah['datuk'] ?? 0) + residu;
+        residu = 0.0;
+      }
+      // (Lapisan seterusnya — saudara lelaki, dsb. — boleh ditambah kemudian)
     }
 
-    // Radd (if still residu left and no asabah got it)
+    // 6) Radd jika masih ada residu & tiada asabah ambil
     bool raddApplied = false;
     if (residu > 1e-12) {
-      // pool = all furud heirs except spouse (common local practice)
+      // Pool radd: ashabul furud kecuali pasangan (kebiasaan tempatan)
       final poolKeys = furud.keys
           .where((k) => k != 'suami' && k != 'isteri')
           .toList();
@@ -1254,7 +1316,7 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
       }
     }
 
-    // Final shares per relationKey (group totals)
+    // 7) Final per relation key
     final finalByKey = <String, double>{};
     for (final e in furud.entries) {
       finalByKey[e.key] = (finalByKey[e.key] ?? 0) + e.value;
@@ -1262,28 +1324,37 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
     for (final e in asabah.entries) {
       finalByKey[e.key] = (finalByKey[e.key] ?? 0) + e.value;
     }
-    // Expand to individual lines (wives split equally; children split equally within gender)
+
+    // 8) Expand to individual lines
     final lines = <_ResultHeirLine>[];
     double? estate = double.tryParse(_estateController.text.trim());
     if (estate != null && estate <= 0) estate = null;
 
-    void addLinePerCount(
-      String labelBase,
+    Role roleOf(String key) {
+      final f = furud[key] ?? 0.0;
+      final a = asabah[key] ?? 0.0;
+      if (f > 0 && a == 0) return Role.furud;
+      if (f == 0 && a > 0) return Role.asabah;
+      if (f > 0 && a > 0) return Role.asabah; // e.g. bapa 1/6 + residu
+      return Role.none;
+    }
+
+    void addLinesSplitEqually(
+      String label,
       String key,
-      int count,
-      Role role, {
+      int count, {
       String note = '',
     }) {
-      final totalShare = finalByKey[key] ?? 0.0;
-      if (totalShare <= 1e-12 || count <= 0) return;
-      final each = totalShare / count;
+      final share = finalByKey[key] ?? 0.0;
+      if (share <= 1e-12 || count <= 0) return;
+      final each = share / count;
       for (int i = 1; i <= count; i++) {
-        final display = count > 1 ? '$labelBase #$i' : labelBase;
+        final name = count > 1 ? '$label #$i' : label;
         lines.add(
           _ResultHeirLine(
-            displayName: display,
+            displayName: name,
             shareFraction: each,
-            role: role,
+            role: roleOf(key),
             note: note,
             value: (estate != null) ? estate * each : null,
           ),
@@ -1291,33 +1362,34 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
       }
     }
 
-    // Roles: infer basic role for display
-    Role roleOf(String key) {
-      if ((furud[key] ?? 0) > 0 && (asabah[key] ?? 0) == 0) return Role.furud;
-      if ((furud[key] ?? 0) == 0 && (asabah[key] ?? 0) > 0) return Role.asabah;
-      if ((furud[key] ?? 0) > 0 && (asabah[key] ?? 0) > 0)
-        return Role.asabah; // e.g., bapa 1/6 + residu
-      return Role.none;
-    }
-
-    // Build lines
-    if (deceasedFemale)
-      addLinePerCount('Suami', 'suami', suami, roleOf('suami'));
+    // Spouses
+    if (deceasedFemale) addLinesSplitEqually('Suami', 'suami', suami);
     if (deceasedMale)
-      addLinePerCount(
+      addLinesSplitEqually(
         'Isteri',
         'isteri',
         isteri,
-        roleOf('isteri'),
         note: 'Dibahagi sama rata',
       );
 
-    addLinePerCount('Ibu', 'ibu', ibu, roleOf('ibu'));
-    addLinePerCount('Bapa', 'bapa', bapa, roleOf('bapa'));
-    addLinePerCount('Anak Lelaki', 'anakL', anakL, roleOf('anakL'));
-    addLinePerCount('Anak Perempuan', 'anakP', anakP, roleOf('anakP'));
+    // Parents
+    addLinesSplitEqually('Ibu', 'ibu', ibu);
+    addLinesSplitEqually('Bapa', 'bapa', bapa);
 
-    // (Extend here for others you support later)
+    // Children
+    addLinesSplitEqually('Anak Lelaki', 'anakL', anakL);
+    addLinesSplitEqually('Anak Perempuan', 'anakP', anakP);
+
+    // Level-2
+    addLinesSplitEqually('Cucu Lelaki (melalui anak lelaki)', 'cucuL', cucuL);
+    addLinesSplitEqually(
+      'Cucu Perempuan (melalui anak lelaki)',
+      'cucuP',
+      cucuP,
+    );
+    addLinesSplitEqually('Datuk (sebelah bapa)', 'datuk', datuk);
+    addLinesSplitEqually('Nenek (sebelah ibu)', 'nenekIbu', nenekIbu);
+    addLinesSplitEqually('Nenek (sebelah bapa)', 'nenekBapa', nenekBapa);
 
     return _Result(
       lines: lines,
