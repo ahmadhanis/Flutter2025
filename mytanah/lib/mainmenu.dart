@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mytanah/kiraluaspenjuru.dart';
+import 'package:mytanah/myfaraidcalc.dart';
 import 'package:mytanah/mytanahcalc.dart';
-
 
 class MainMenu extends StatelessWidget {
   const MainMenu({super.key});
@@ -45,13 +45,25 @@ class MainMenu extends StatelessWidget {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const MyTanahCal()),
+                      MaterialPageRoute(
+                        builder: (context) => const MyTanahCal(),
+                      ),
                     );
                   },
                 ),
 
                 const SizedBox(height: 20),
-
+                _buildMenuButton(
+                  context,
+                  title: 'Kalkulator Faraid',
+                  icon: Icons.family_restroom,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => MyFaraidCalc()),
+                    );
+                  },
+                ),
                 // Kira Luas Pepenjuru Button
                 // _buildMenuButton(
                 //   context,
@@ -72,8 +84,12 @@ class MainMenu extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuButton(BuildContext context,
-      {required String title, required IconData icon, required VoidCallback onTap}) {
+  Widget _buildMenuButton(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
