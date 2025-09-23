@@ -282,143 +282,15 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
 
                       // ===== SECTION: Add Member (inline form) =====
                       _SectionCard(
-                        color: Theme.of(context).colorScheme.primaryContainer,
+                        color: Theme.of(context).colorScheme.secondaryContainer,
                         title: 'Tambah Waris',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                // Relation
-                                Expanded(
-                                  child: DropdownButtonFormField<String>(
-                                    isExpanded: true,
-                                    value: _newRelationKey,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Jenis Waris',
-                                      prefixIcon: Icon(
-                                        Icons.family_restroom_outlined,
-                                      ),
-                                    ),
-                                    items: relationOptions
-                                        .map(
-                                          (o) => DropdownMenuItem(
-                                            value: o.key,
-                                            child: Text(
-                                              o.label,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (v) => setState(
-                                      () => _newRelationKey =
-                                          v ?? _newRelationKey,
-                                    ),
-                                  ),
-                                ),
-
-                                // Level
-                                SizedBox(
-                                  width: isMed ? 140 : double.infinity,
-                                  child: DropdownButtonFormField<int>(
-                                    value: _newLevel,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Level',
-                                      prefixIcon: Icon(Icons.filter_2_outlined),
-                                    ),
-                                    items: const [
-                                      DropdownMenuItem(
-                                        value: 1,
-                                        child: Text('1'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 2,
-                                        child: Text('2'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 3,
-                                        child: Text('3'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 4,
-                                        child: Text('4'),
-                                      ),
-                                    ],
-                                    onChanged: (v) =>
-                                        setState(() => _newLevel = v ?? 1),
-                                  ),
-                                ),
-                                // Gender
-                                SizedBox(
-                                  width: isMed ? 180 : double.infinity,
-                                  child: DropdownButtonFormField<Gender>(
-                                    value: _newGender,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Jantina',
-                                      prefixIcon: Icon(Icons.wc_outlined),
-                                    ),
-                                    items: const [
-                                      DropdownMenuItem(
-                                        value: Gender.male,
-                                        child: Text('Lelaki'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: Gender.female,
-                                        child: Text('Perempuan'),
-                                      ),
-                                    ],
-                                    onChanged: (v) => setState(
-                                      () => _newGender = v ?? Gender.male,
-                                    ),
-                                  ),
-                                ),
-                                // Count
-                                SizedBox(
-                                  width: isMed ? 140 : double.infinity,
-                                  child: TextField(
-                                    controller: _newCount,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Bilangan',
-                                      prefixIcon: Icon(
-                                        Icons.onetwothree_outlined,
-                                      ),
-                                    ),
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          signed: false,
-                                        ),
-                                  ),
-                                ),
-                                // Name (optional)
-                                SizedBox(
-                                  width: isWide ? 280 : double.infinity,
-                                  child: TextField(
-                                    controller: _newName,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Nama / Catatan (opsyenal)',
-                                      prefixIcon: Icon(Icons.note_alt_outlined),
-                                    ),
-                                  ),
-                                ),
-                                // Alive switch
-                                _InlineSwitch(
-                                  label: 'Masih hidup',
-                                  value: _newAlive,
-                                  onChanged: (v) =>
-                                      setState(() => _newAlive = v),
-                                ),
-                                // Add button (duplicate of FAB for convenience)
-                                FilledButton.icon(
-                                  onPressed: _addMember,
-                                  icon: const Icon(Icons.person_add_alt_1),
-                                  label: const Text('Tambah'),
-                                ),
-                              ],
-                            ),
-                          ],
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: FilledButton.icon(
+                            onPressed: _openAddWarisSheet,
+                            icon: const Icon(Icons.person_add_alt_1),
+                            label: const Text('Tambah Waris'),
+                          ),
                         ),
                       ),
 
@@ -1397,6 +1269,314 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
       awlApplied: awlApplied,
       raddApplied: raddApplied,
     );
+  }
+
+  void _openAddWarisSheet() {
+    const femaleRelations = {
+      'ibu',
+      'nenek',
+      'isteri',
+      'anak_perempuan',
+      'cucu_perempuan',
+      'saudara_perempuan',
+    };
+
+    const maleRelations = {
+      'bapa',
+      'datuk',
+      'suami',
+      'anak_lelaki',
+      'cucu_lelaki',
+      'saudara_lelaki',
+    };
+    // seed from your inline defaults
+    String relKey = _newRelationKey;
+    int level = _newLevel;
+    Gender gender = _newGender;
+    bool alive = _newAlive;
+    final nameC = TextEditingController(text: _newName.text);
+    final countC = TextEditingController(text: _newCount.text);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) {
+        final media = MediaQuery.of(ctx);
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, controller) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                media.viewInsets.bottom + 12,
+              ),
+              child: StatefulBuilder(
+                builder: (context, setSheetState) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.person_add_alt_1),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Tambah Waris',
+                            style: Theme.of(ctx).textTheme.titleMedium,
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            tooltip: 'Tutup',
+                            onPressed: () => Navigator.of(ctx).maybePop(),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      Expanded(
+                        child: ListView(
+                          controller: controller,
+                          children: [
+                            // Jenis Waris
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              value: relKey,
+                              decoration: const InputDecoration(
+                                labelText: 'Jenis Waris',
+                                prefixIcon: Icon(
+                                  Icons.family_restroom_outlined,
+                                ),
+                              ),
+                              items: relationOptions
+                                  .map(
+                                    (o) => DropdownMenuItem(
+                                      value: o.key,
+                                      child: Text(
+                                        o.label,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) {
+                                setSheetState(() {
+                                  relKey = v ?? relKey;
+                                  if (v != null &&
+                                      femaleRelations.contains(v)) {
+                                    gender = Gender.female;
+                                  } else if (v != null &&
+                                      maleRelations.contains(v)) {
+                                    gender = Gender.male;
+                                  }
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Level
+                            DropdownButtonFormField<int>(
+                              value: level,
+                              decoration: const InputDecoration(
+                                labelText: 'Level',
+                                prefixIcon: Icon(Icons.filter_2_outlined),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 1, child: Text('1')),
+                                DropdownMenuItem(value: 2, child: Text('2')),
+                                DropdownMenuItem(value: 3, child: Text('3')),
+                                DropdownMenuItem(value: 4, child: Text('4')),
+                              ],
+                              onChanged: (v) =>
+                                  setSheetState(() => level = v ?? level),
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Jantina
+                            DropdownButtonFormField<Gender>(
+                              value: gender,
+                              decoration: const InputDecoration(
+                                labelText: 'Jantina',
+                                prefixIcon: Icon(Icons.wc_outlined),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: Gender.male,
+                                  child: Text('Lelaki'),
+                                ),
+                                DropdownMenuItem(
+                                  value: Gender.female,
+                                  child: Text('Perempuan'),
+                                ),
+                              ],
+                              onChanged: (v) =>
+                                  setSheetState(() => gender = v ?? gender),
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Bilangan
+                            TextField(
+                              controller: countC,
+                              decoration: const InputDecoration(
+                                labelText: 'Bilangan',
+                                prefixIcon: Icon(Icons.onetwothree_outlined),
+                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(),
+                              onChanged: (_) => setSheetState(() {}),
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Nama / Catatan
+                            TextField(
+                              controller: nameC,
+                              decoration: const InputDecoration(
+                                labelText: 'Nama / Catatan (opsyenal)',
+                                prefixIcon: Icon(Icons.note_alt_outlined),
+                              ),
+                              onChanged: (_) => setSheetState(() {}),
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Alive
+                            _InlineSwitch(
+                              label: 'Masih hidup',
+                              value: alive,
+                              onChanged: (v) => setSheetState(() => alive = v),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Preview chips
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                _miniChip(
+                                  Icons.badge_outlined,
+                                  relationOptions
+                                      .firstWhere((o) => o.key == relKey)
+                                      .label,
+                                ),
+                                _miniChip(
+                                  Icons.filter_2_outlined,
+                                  'Level $level',
+                                ),
+                                _miniChip(
+                                  Icons.wc_outlined,
+                                  gender == Gender.male
+                                      ? 'Lelaki'
+                                      : 'Perempuan',
+                                ),
+                                _miniChip(
+                                  Icons.onetwothree_outlined,
+                                  'Bil: ${countC.text}',
+                                ),
+                                _miniChip(
+                                  alive
+                                      ? Icons.verified_user_outlined
+                                      : Icons.cancel_outlined,
+                                  alive ? 'Hidup' : 'Meninggal',
+                                ),
+                                if (nameC.text.trim().isNotEmpty)
+                                  _miniChip(Icons.notes, nameC.text.trim()),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                setSheetState(() {
+                                  nameC.clear();
+                                  countC.text = '1';
+                                  level = 1;
+                                  alive = true;
+                                  // auto gender again from relation
+                                  if (femaleRelations.contains(relKey)) {
+                                    gender = Gender.female;
+                                  } else if (maleRelations.contains(relKey)) {
+                                    gender = Gender.male;
+                                  }
+                                });
+                              },
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Reset Borang'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () {
+                                final count =
+                                    int.tryParse(countC.text.trim()) ?? -1;
+                                if (count <= 0) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Bilangan tidak sah.'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                setState(() {
+                                  _members.add(
+                                    FaraidMember(
+                                      nameController: TextEditingController(
+                                        text: nameC.text,
+                                      ),
+                                      countController: TextEditingController(
+                                        text: count.toString(),
+                                      ),
+                                      relationKey: relKey,
+                                      level: level,
+                                      gender: gender,
+                                      alive: alive,
+                                    ),
+                                  );
+                                  // persist defaults (optional)
+                                  _newRelationKey = relKey;
+                                  _newLevel = level;
+                                  _newGender = gender;
+                                  _newAlive = alive;
+                                  _newName.text = '';
+                                  _newCount.text = '1';
+                                });
+                                Navigator.of(ctx).maybePop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Waris ditambah.'),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.person_add_alt_1),
+                              label: const Text('Tambah'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      // optional: dispose temp controllers
+      nameC.dispose();
+      countC.dispose();
+    });
   }
 }
 
