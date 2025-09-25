@@ -23,48 +23,25 @@ class RelationOption {
 const relationOptions = <RelationOption>[
   RelationOption('suami', 'Suami'),
   RelationOption('isteri', 'Isteri'),
+  RelationOption('bapa', 'Bapa'),
+  RelationOption('ibu', 'Ibu'),
   RelationOption('anakL', 'Anak Lelaki'),
   RelationOption('anakP', 'Anak Perempuan'),
   RelationOption('cucuL', 'Cucu Lelaki (melalui anak lelaki)'),
   RelationOption('cucuP', 'Cucu Perempuan (melalui anak lelaki)'),
-  RelationOption('bapa', 'Bapa'),
-  RelationOption('ibu', 'Ibu'),
-  RelationOption('datuk', 'Datuk (sebelah bapa)'),
-  RelationOption('nenekIbu', 'Nenek (sebelah ibu)'),
-  RelationOption('nenekBapa', 'Nenek (sebelah bapa)'),
-  RelationOption('sb_seibuSebapa_L', 'Saudara Lelaki Seibu-sebapa'),
-  RelationOption('ss_seibuSebapa_P', 'Saudara Perempuan Seibu-sebapa'),
-  RelationOption('sb_sebapa_L', 'Saudara Lelaki Sebapa'),
-  RelationOption('ss_sebapa_P', 'Saudara Perempuan Sebapa'),
-  RelationOption('saudaraSeibu', 'Saudara Seibu'),
+  RelationOption('cicitL', 'Cicit Lelaki (melalui cucu lelaki)'),
+  RelationOption('cicitP', 'Cicit Perempuan (melalui cucu lelaki)'),
 ];
 
-const femaleRelations = {
-  'isteri',
-  'ibu',
-  'anakP',
-  'cucuP',
-  'nenekIbu',
-  'nenekBapa',
-  'ss_seibuSebapa_P',
-  'ss_sebapa_P',
-};
-const maleRelations = {
-  'suami',
-  'bapa',
-  'anakL',
-  'cucuL',
-  'datuk',
-  'sb_seibuSebapa_L',
-  'sb_sebapa_L',
-};
+const femaleRelations = {'isteri', 'ibu', 'anakP', 'cucuP', 'cicitP'};
+
+const maleRelations = {'suami', 'bapa', 'anakL', 'cucuL', 'cicitL'};
 
 class FaraidMember {
   FaraidMember({
     required this.nameController,
     required this.countController,
     required this.relationKey,
-    required this.level,
     required this.gender,
     required this.alive,
   });
@@ -72,7 +49,6 @@ class FaraidMember {
   final TextEditingController nameController;
   final TextEditingController countController;
   String relationKey;
-  int level;
   Gender gender;
   bool alive;
 
@@ -412,10 +388,7 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
                                                     Icons.badge_outlined,
                                                     rel.label,
                                                   ),
-                                                  _miniChip(
-                                                    Icons.filter_2_outlined,
-                                                    'Level ${m.level}',
-                                                  ),
+
                                                   _miniChip(
                                                     Icons.wc_outlined,
                                                     m.gender == Gender.male
@@ -590,21 +563,7 @@ class _AddWarisSheetState extends State<_AddWarisSheet> {
                   },
                 ),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<int>(
-                  value: level,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Level',
-                    prefixIcon: Icon(Icons.filter_2_outlined),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 1, child: Text('1')),
-                    DropdownMenuItem(value: 2, child: Text('2')),
-                    DropdownMenuItem(value: 3, child: Text('3')),
-                    DropdownMenuItem(value: 4, child: Text('4')),
-                  ],
-                  onChanged: (v) => setState(() => level = v ?? level),
-                ),
+
                 const SizedBox(height: 10),
                 DropdownButtonFormField<Gender>(
                   value: gender,
@@ -719,7 +678,6 @@ class _AddWarisSheetState extends State<_AddWarisSheet> {
                           text: c.toString(),
                         ),
                         relationKey: relKey,
-                        level: level,
                         gender: gender,
                         alive: alive,
                       ),
@@ -1089,78 +1047,84 @@ ComputeResult _compute(MembersController ctrl) {
   }
 
   final deceasedMale = ctrl.deceasedGender.value == Gender.male;
+
+  // Core heirs in scope
   final suami = counts['suami'] ?? 0;
   final isteri = counts['isteri'] ?? 0;
-  final anakL = counts['anakL'] ?? 0;
-  final anakP = counts['anakP'] ?? 0;
   final bapa = counts['bapa'] ?? 0;
   final ibu = counts['ibu'] ?? 0;
+  final anakL = counts['anakL'] ?? 0;
+  final anakP = counts['anakP'] ?? 0;
+  final cucuL = counts['cucuL'] ?? 0; // via son
+  final cucuP = counts['cucuP'] ?? 0; // via son
+  final cicitL = counts['cicitL'] ?? 0; // via grandson (male line)
+  final cicitP = counts['cicitP'] ?? 0; // via grandson (male line)
 
-  final fullBro = counts['sb_seibuSebapa_L'] ?? 0;
-  final fullSis = counts['ss_seibuSebapa_P'] ?? 0;
-  final conBro = counts['sb_sebapa_L'] ?? 0;
-  final conSis = counts['ss_sebapa_P'] ?? 0;
-  final uterine = counts['saudaraSeibu'] ?? 0;
-  final siblingsAny = fullBro + fullSis + conBro + conSis + uterine;
-
-  final cucuL = counts['cucuL'] ?? 0;
-  final cucuP = counts['cucuP'] ?? 0;
-  final datuk = counts['datuk'] ?? 0;
-  final nenekIbu = counts['nenekIbu'] ?? 0;
-  final nenekBapa = counts['nenekBapa'] ?? 0;
-
-  final hasSon = anakL > 0;
   final hasChild = (anakL + anakP) > 0;
-  final hasDescendantLine = hasChild || (cucuL + cucuP) > 0;
+  final hasSon = anakL > 0;
+  final hasGrandchildLine = (cucuL + cucuP) > 0;
+  final hasGreatGCL = (cicitL + cicitP) > 0;
 
+  // Hijab notes (informational)
   if (hasSon) {
-    if (cucuL + cucuP > 0)
+    if (hasGrandchildLine)
       blockedNotes.add(
         'Cucu (melalui anak lelaki) terhalang oleh anak lelaki.',
       );
-    if (fullBro + fullSis + conBro + conSis + uterine > 0) {
-      blockedNotes.add('Saudara/saudari terhalang oleh anak lelaki.');
-    }
+    if (hasGreatGCL)
+      blockedNotes.add(
+        'Cicit (melalui cucu lelaki) terhalang oleh anak lelaki.',
+      );
+  } else if (!hasChild && cucuL > 0) {
+    if (hasGreatGCL)
+      blockedNotes.add(
+        'Cicit (melalui cucu lelaki) terhalang oleh cucu lelaki.',
+      );
   }
-  if (bapa > 0 && datuk > 0) blockedNotes.add('Datuk terhalang oleh bapa.');
-  if (hasChild || bapa > 0) {
-    if (uterine > 0)
-      blockedNotes.add('Saudara seibu terhalang oleh anak/bapa.');
+  if (bapa > 0) {
+    // (Within our scope no grandfathers included, so nothing to note here.)
   }
-  if (ibu > 0 && (nenekIbu + nenekBapa) > 0)
-    blockedNotes.add('Nenek terhalang oleh ibu.');
 
+  // Shares
   final furud = <String, double>{};
   final asabah = <String, double>{};
 
+  // Spouses
   if (deceasedMale && isteri > 0) furud['isteri'] = hasChild ? 1 / 8 : 1 / 4;
   if (!deceasedMale && suami > 0) furud['suami'] = hasChild ? 1 / 4 : 1 / 2;
 
-  if (ibu > 0) furud['ibu'] = (hasChild || siblingsAny >= 2) ? 1 / 6 : 1 / 3;
-
-  if (bapa > 0) {
-    if (hasChild) furud['bapa'] = 1 / 6;
+  // Mother
+  if (ibu > 0) {
+    // In the diagram's scope, the common rule: 1/3 (no children) or 1/6 (with children)
+    furud['ibu'] = hasChild ? 1 / 6 : 1 / 3;
   }
 
-  if (anakP > 0 && anakL == 0) furud['anakP'] = anakP == 1 ? 1 / 2 : 2 / 3;
+  // Father
+  if (bapa > 0) {
+    if (hasChild) furud['bapa'] = 1 / 6; // may also take residu later
+  }
 
+  // Daughters (no sons)
+  if (anakP > 0 && anakL == 0) {
+    furud['anakP'] = anakP == 1 ? 1 / 2 : 2 / 3;
+  }
+
+  // Granddaughters via son (only when NO children)
   if (!hasChild) {
     if (cucuP > 0 && cucuL == 0) {
-      furud['cucuP'] = cucuP == 1 ? 1 / 2 : 2 / 3;
+      furud['cucuP'] = (cucuP == 1) ? 1 / 2 : 2 / 3;
+      // (Optional advanced: "tamam 2/3" with one daughter → +1/6 to granddaughter)
     }
   }
 
-  if (ibu == 0) {
-    if (nenekIbu > 0) furud['nenekIbu'] = 1 / 6;
-    if (nenekBapa > 0) furud['nenekBapa'] = 1 / 6;
-  }
-
-  if (bapa == 0 && datuk > 0) {
-    if (hasDescendantLine) {
-      furud['datuk'] = 1 / 6;
+  // Great-granddaughters via grandson (only when NO children & NO grandchildren)
+  if (!hasChild && !hasGrandchildLine) {
+    if (cicitP > 0 && cicitL == 0) {
+      furud['cicitP'] = (cicitP == 1) ? 1 / 2 : 2 / 3;
     }
   }
 
+  // ‘Awl if needed
   double ft = furud.values.fold(0.0, (s, v) => s + v);
   bool awl = false;
   if (ft > 1.0 + 1e-12) {
@@ -1172,10 +1136,12 @@ ComputeResult _compute(MembersController ctrl) {
     ft = 1.0;
   }
 
+  // Residu → ordered Asabah (male-line priority: sons → grandsons → great-grandsons → father)
   double residu = 1.0 - ft;
 
   if (residu > 1e-12) {
     if (anakL > 0) {
+      // Sons (+ daughters) 2:1
       final units = (2 * anakL) + anakP;
       if (units > 0) {
         asabah['anakL'] = residu * (2 * anakL) / units;
@@ -1183,21 +1149,31 @@ ComputeResult _compute(MembersController ctrl) {
         residu = 0.0;
       }
     } else if (!hasChild && (cucuL > 0 || (cucuP > 0 && cucuL > 0))) {
+      // Grandsons (+ granddaughters) 2:1
       final units = (2 * cucuL) + cucuP;
       if (units > 0) {
         asabah['cucuL'] = residu * (2 * cucuL) / units;
         if (cucuP > 0) asabah['cucuP'] = residu * (cucuP) / units;
         residu = 0.0;
       }
+    } else if (!hasChild &&
+        !hasGrandchildLine &&
+        (cicitL > 0 || (cicitP > 0 && cicitL > 0))) {
+      // Great-grandsons (+ great-granddaughters) 2:1
+      final units = (2 * cicitL) + cicitP;
+      if (units > 0) {
+        asabah['cicitL'] = residu * (2 * cicitL) / units;
+        if (cicitP > 0) asabah['cicitP'] = residu * (cicitP) / units;
+        residu = 0.0;
+      }
     } else if (bapa > 0) {
+      // Father takes residue if no closer male-line descendants
       asabah['bapa'] = residu;
-      residu = 0.0;
-    } else if (datuk > 0) {
-      asabah['datuk'] = residu;
       residu = 0.0;
     }
   }
 
+  // Radd if still residue and no asabah received it
   bool radd = false;
   if (residu > 1e-12) {
     final pool = furud.keys
@@ -1213,6 +1189,7 @@ ComputeResult _compute(MembersController ctrl) {
     }
   }
 
+  // Final by relation
   final byKey = <String, double>{};
   for (final e in furud.entries) {
     byKey[e.key] = (byKey[e.key] ?? 0) + e.value;
@@ -1221,6 +1198,7 @@ ComputeResult _compute(MembersController ctrl) {
     byKey[e.key] = (byKey[e.key] ?? 0) + e.value;
   }
 
+  // Expand to individuals
   final lines = <ResultHeirLine>[];
   double? estate = double.tryParse(ctrl.estateController.text.trim());
   if (estate != null && estate <= 0) estate = null;
@@ -1252,18 +1230,22 @@ ComputeResult _compute(MembersController ctrl) {
     }
   }
 
+  // Order of printing, matching your scope
   if (!deceasedMale) addIndividuals('Suami', 'suami', suami);
   if (deceasedMale)
     addIndividuals('Isteri', 'isteri', isteri, note: 'Dibahagi sama rata');
+
   addIndividuals('Ibu', 'ibu', ibu);
   addIndividuals('Bapa', 'bapa', bapa);
+
   addIndividuals('Anak Lelaki', 'anakL', anakL);
   addIndividuals('Anak Perempuan', 'anakP', anakP);
+
   addIndividuals('Cucu Lelaki (melalui anak lelaki)', 'cucuL', cucuL);
   addIndividuals('Cucu Perempuan (melalui anak lelaki)', 'cucuP', cucuP);
-  addIndividuals('Datuk (sebelah bapa)', 'datuk', datuk);
-  addIndividuals('Nenek (sebelah ibu)', 'nenekIbu', nenekIbu);
-  addIndividuals('Nenek (sebelah bapa)', 'nenekBapa', nenekBapa);
+
+  addIndividuals('Cicit Lelaki (melalui cucu lelaki)', 'cicitL', cicitL);
+  addIndividuals('Cicit Perempuan (melalui cucu lelaki)', 'cicitP', cicitP);
 
   return ComputeResult(
     lines: lines,
