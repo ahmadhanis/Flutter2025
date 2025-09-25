@@ -244,6 +244,17 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
                                           Icons.landscape_outlined,
                                         AssetUnit.percentOnly => Icons.percent,
                                       }),
+                                      suffixIcon: IconButton(
+                                        tooltip: 'Kalkulator Pusaka',
+                                        onPressed: () =>
+                                            _openEstateCalculatorSheet(
+                                              context,
+                                              ctrl,
+                                            ),
+                                        icon: const Icon(
+                                          Icons.calculate_outlined,
+                                        ),
+                                      ),
                                     ),
                                     keyboardType:
                                         const TextInputType.numberWithOptions(
@@ -438,6 +449,305 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
       ),
     );
   }
+
+  Future<void> _openEstateCalculatorSheet(
+    BuildContext parentContext,
+    MembersController ctrl,
+  ) async {
+    final messenger = ScaffoldMessenger.of(parentContext);
+
+    // Sections (based on your sketch)
+    final takAlih = [_Amt('Tanah'), _Amt('Rumah'), _Amt('Bangunan')];
+    final alih = [
+      _Amt('Kenderaan'),
+      _Amt('Tabung Haji / TH'),
+      _Amt('Simpanan / Saving'),
+      _Amt('KWSP / EPF'),
+      _Amt('Hasil Sewa'),
+      _Amt('Pelaburan / Investment'),
+      _Amt('Saham / Syair / Unit Trust'),
+      _Amt('Emas / Gold'),
+      _Amt('Lain-lain Aset'),
+    ];
+    // Optional deductions to get *net* estate
+    final potongan = [
+      _Amt('Hutang'),
+      _Amt('Kos Pengkebumian'),
+      _Amt('Zakat/Cukai Tertunggak'),
+      _Amt('Wasiat (≤ 1/3)'),
+      _Amt('Lain-lain Potongan'),
+    ];
+
+    double sumList(List<_Amt> xs) => xs.fold(0.0, (s, x) => s + x.v);
+
+    await showModalBottomSheet(
+      context: parentContext,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            void recalc() => setSheetState(() {}); // triggers totals
+            final totalTakAlih = sumList(takAlih);
+            final totalAlih = sumList(alih);
+            final totalPotongan = sumList(potongan);
+            final grandTotal = (totalTakAlih + totalAlih) - totalPotongan;
+
+            InputDecoration _dec(String label) => InputDecoration(
+              labelText: label,
+              prefixText: 'RM ',
+              isDense: true,
+            );
+
+            Widget _moneyField(_Amt a) => TextField(
+              controller: a.c,
+              decoration: _dec(a.label),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              onChanged: (_) => recalc(),
+            );
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                MediaQuery.of(ctx).viewInsets.bottom + 12,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.calculate_outlined),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Kalkulator Pusaka Bersih',
+                        style: Theme.of(ctx).textTheme.titleMedium,
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Tutup',
+                        onPressed: () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          Navigator.of(ctx).maybePop();
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        // HARTA TAK ALIH
+                        _sectionHeader(ctx, 'Harta Tak Alih'),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: takAlih
+                              .map(
+                                (a) =>
+                                    SizedBox(width: 280, child: _moneyField(a)),
+                              )
+                              .toList(),
+                        ),
+                        _totChip(
+                          context: ctx,
+                          label: 'Jumlah Harta Tak Alih',
+                          value: totalTakAlih,
+                        ),
+
+                        const SizedBox(height: 14),
+                        // HARTA ALIH
+                        _sectionHeader(ctx, 'Harta Alih'),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: alih
+                              .map(
+                                (a) =>
+                                    SizedBox(width: 280, child: _moneyField(a)),
+                              )
+                              .toList(),
+                        ),
+                        _totChip(
+                          context: ctx,
+                          label: 'Jumlah Harta Alih',
+                          value: totalAlih,
+                        ),
+
+                        const SizedBox(height: 14),
+                        // POTONGAN
+                        _sectionHeader(ctx, 'Potongan (Opsyenal)'),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: potongan
+                              .map(
+                                (a) =>
+                                    SizedBox(width: 280, child: _moneyField(a)),
+                              )
+                              .toList(),
+                        ),
+                        _totChip(
+                          context: ctx,
+                          label: 'Jumlah Potongan',
+                          value: totalPotongan,
+                        ),
+
+                        const SizedBox(height: 14),
+                        // GRAND TOTAL
+                        _grandTotal(ctx, grandTotal),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            for (final a in [...takAlih, ...alih, ...potongan])
+                              a.c.clear();
+                            recalc();
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Reset Borang'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            // apply only in RM mode
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            if (ctrl.unit.value != AssetUnit.rm) {
+                              Navigator.of(ctx).maybePop();
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (parentContext.mounted) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Unit bukan RM. Tukar ke RM untuk guna kalkulator ini.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              });
+                              return;
+                            }
+                            ctrl.estateController.text = grandTotal
+                                .toStringAsFixed(2);
+                            Navigator.of(ctx).maybePop();
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (parentContext.mounted) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Pusaka Bersih dikemas kini.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            });
+                          },
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('Guna Nilai Ini'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      // cleanup: dispose all controllers created here
+      for (final a in [...takAlih, ...alih, ...potongan]) {
+        a.dispose();
+      }
+    });
+  }
+
+  // ---------- small UI helpers for the sheet ----------
+
+  Widget _sectionHeader(BuildContext context, String title) {
+    return Row(
+      children: [
+        Icon(
+          Icons.folder_outlined,
+          size: 18,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+  }
+
+  Widget _totChip({
+    required BuildContext context,
+    required String label,
+    required double value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Chip(
+          visualDensity: VisualDensity.compact,
+          avatar: const Icon(Icons.summarize_outlined, size: 16),
+          label: Text('$label: RM ${value.toStringAsFixed(2)}'),
+        ),
+      ),
+    );
+  }
+
+  Widget _grandTotal(BuildContext context, double total) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.account_balance_wallet_outlined),
+          const SizedBox(width: 8),
+          const Text('Pusaka Bersih'),
+          const Spacer(),
+          Text(
+            'RM ${total.toStringAsFixed(2)}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Build entry model
+class _Amt {
+  _Amt(this.label) : c = TextEditingController();
+  final String label;
+  final TextEditingController c;
+  double get v => double.tryParse(c.text.trim()) ?? 0.0;
+  void dispose() => c.dispose();
 }
 
 /// =========================
