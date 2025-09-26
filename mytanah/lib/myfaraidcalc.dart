@@ -1,5 +1,15 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:mytanah/addwarissheet.dart';
+import 'package:mytanah/controllers/MembersController.dart' hide Gender;
+import 'package:mytanah/controllers/amt.dart';
+import 'package:mytanah/engine/faraid_engine.dart';
+import 'package:mytanah/estatecalculatorsheet.dart';
+import 'package:mytanah/models/ComputeResult.dart';
+import 'package:mytanah/models/FaraidMember.dart';
+import 'package:mytanah/models/ResultHeirLine.dart';
+import 'package:mytanah/models/enums.dart';
+import 'package:mytanah/sectioncard.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -7,12 +17,6 @@ import 'package:printing/printing.dart';
 /// =========================
 /// Models & Enums
 /// =========================
-
-enum Gender { male, female }
-
-enum AssetUnit { percentOnly, rm, hektar }
-
-enum Role { furud, asabah, radd, blocked, none }
 
 class RelationOption {
   final String key;
@@ -37,95 +41,9 @@ const femaleRelations = {'isteri', 'ibu', 'anakP', 'cucuP', 'cicitP'};
 
 const maleRelations = {'suami', 'bapa', 'anakL', 'cucuL', 'cicitL'};
 
-class FaraidMember {
-  FaraidMember({
-    required this.nameController,
-    required this.countController,
-    required this.relationKey,
-    required this.gender,
-    required this.alive,
-  });
-
-  final TextEditingController nameController;
-  final TextEditingController countController;
-  String relationKey;
-  Gender gender;
-  bool alive;
-
-  void dispose() {
-    nameController.dispose();
-    countController.dispose();
-  }
-}
-
-class ResultHeirLine {
-  ResultHeirLine({
-    required this.displayName,
-    required this.shareFraction,
-    required this.role,
-    required this.note,
-    this.value,
-  });
-  final String displayName;
-  final double shareFraction;
-  final Role role;
-  final String note;
-  final double? value;
-}
-
-class ComputeResult {
-  ComputeResult({
-    required this.lines,
-    required this.blockedNotes,
-    required this.awlApplied,
-    required this.raddApplied,
-  });
-  final List<ResultHeirLine> lines;
-  final List<String> blockedNotes;
-  final bool awlApplied;
-  final bool raddApplied;
-}
-
 /// =========================
 /// Controller (state)
 /// =========================
-
-class MembersController extends ChangeNotifier {
-  final estateController = TextEditingController();
-  final unit = ValueNotifier<AssetUnit>(AssetUnit.rm);
-  final deceasedGender = ValueNotifier<Gender>(Gender.male);
-
-  final members = <FaraidMember>[];
-
-  void add(FaraidMember m) {
-    members.add(m);
-    notifyListeners();
-  }
-
-  void removeAt(int i) {
-    members[i].dispose();
-    members.removeAt(i);
-    notifyListeners();
-  }
-
-  void reset() {
-    for (final m in members) m.dispose();
-    members.clear();
-    estateController.clear();
-    unit.value = AssetUnit.rm;
-    deceasedGender.value = Gender.male;
-    notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    for (final m in members) m.dispose();
-    estateController.dispose();
-    unit.dispose();
-    deceasedGender.dispose();
-    super.dispose();
-  }
-}
 
 /// =========================
 /// Main Screen
@@ -177,10 +95,12 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
               icon: const Icon(Icons.calculate_outlined),
               onPressed: () async {
                 FocusManager.instance.primaryFocus?.unfocus();
-                final res = _compute(ctrl);
+
+                final res = FaraidEngine.compute(ctrl); // ✅ use the new engine
                 await _showResultPopup(context, ctrl, res);
               },
             ),
+
             IconButton(
               tooltip: 'Reset',
               icon: const Icon(Icons.refresh),
@@ -214,7 +134,7 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _SectionCard(
+                          SectionCard(
                             title: 'Pusaka Bersih & Si Mati',
                             child: Wrap(
                               spacing: 12,
@@ -244,16 +164,26 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
                                           Icons.landscape_outlined,
                                         AssetUnit.percentOnly => Icons.percent,
                                       }),
-                                      suffixIcon: IconButton(
-                                        tooltip: 'Kalkulator Pusaka',
+                                      suffixIcon: TextButton.icon(
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                          minimumSize: const Size(
+                                            0,
+                                            40,
+                                          ), // shrink height
+                                        ),
                                         onPressed: () =>
                                             _openEstateCalculatorSheet(
                                               context,
                                               ctrl,
                                             ),
                                         icon: const Icon(
-                                          Icons.calculate_outlined,
+                                          Icons.calculate_rounded,
+                                          color: Colors.redAccent,
                                         ),
+                                        label: const Text('Kira'),
                                       ),
                                     ),
                                     keyboardType:
@@ -294,7 +224,7 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
                                 SizedBox(
                                   width: isMed ? 220 : double.infinity,
                                   child: DropdownButtonFormField<Gender>(
-                                    value: ctrl.deceasedGender.value,
+                                    initialValue: ctrl.deceasedGender.value,
                                     isExpanded: true,
                                     decoration: const InputDecoration(
                                       labelText: 'Jantina Si Mati',
@@ -323,7 +253,7 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
                             ),
                           ),
                           const SizedBox(height: 14),
-                          _SectionCard(
+                          SectionCard(
                             title: 'Senarai Waris',
                             child: ctrl.members.isEmpty
                                 ? const Padding(
@@ -454,552 +384,54 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
     BuildContext parentContext,
     MembersController ctrl,
   ) async {
+    final result = await showModalBottomSheet<double>(
+      context: parentContext,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => EstateCalculatorSheet(ctrl: ctrl),
+    );
+
+    if (result != null && parentContext.mounted) {
+      ctrl.estateController.text = result.toStringAsFixed(2);
+      ScaffoldMessenger.of(parentContext).showSnackBar(
+        const SnackBar(content: Text('Pusaka Bersih dikemas kini.')),
+      );
+    }
+  }
+
+  // Build entry model
+
+  /// =========================
+  /// Add Waris Sheet (stateful)
+  /// =========================
+
+  Future<void> _openAddWarisSheet(
+    BuildContext parentContext,
+    MembersController ctrl,
+  ) async {
+    // Capture parent messenger safely
     final messenger = ScaffoldMessenger.of(parentContext);
 
-    // Sections (based on your sketch)
-    final takAlih = [_Amt('Tanah'), _Amt('Rumah'), _Amt('Bangunan')];
-    final alih = [
-      _Amt('Kenderaan'),
-      _Amt('Tabung Haji / TH'),
-      _Amt('Simpanan / Saving'),
-      _Amt('KWSP / EPF'),
-      _Amt('Hasil Sewa'),
-      _Amt('Pelaburan / Investment'),
-      _Amt('Saham / Syair / Unit Trust'),
-      _Amt('Emas / Gold'),
-      _Amt('Lain-lain Aset'),
-    ];
-    // Optional deductions to get *net* estate
-    final potongan = [
-      _Amt('Hutang'),
-      _Amt('Kos Pengkebumian'),
-      _Amt('Zakat/Cukai Tertunggak'),
-      _Amt('Wasiat (≤ 1/3)'),
-      _Amt('Lain-lain Potongan'),
-    ];
-
-    double sumList(List<_Amt> xs) => xs.fold(0.0, (s, x) => s + x.v);
+    // Avoid focused parent fields interfering
+    FocusManager.instance.primaryFocus?.unfocus();
 
     await showModalBottomSheet(
       context: parentContext,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            void recalc() => setSheetState(() {}); // triggers totals
-            final totalTakAlih = sumList(takAlih);
-            final totalAlih = sumList(alih);
-            final totalPotongan = sumList(potongan);
-            final grandTotal = (totalTakAlih + totalAlih) - totalPotongan;
-
-            InputDecoration _dec(String label) => InputDecoration(
-              labelText: label,
-              prefixText: 'RM ',
-              isDense: true,
-            );
-
-            Widget _moneyField(_Amt a) => TextField(
-              controller: a.c,
-              decoration: _dec(a.label),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              onChanged: (_) => recalc(),
-            );
-
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                12,
-                16,
-                MediaQuery.of(ctx).viewInsets.bottom + 12,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.calculate_outlined),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Kalkulator Pusaka Bersih',
-                        style: Theme.of(ctx).textTheme.titleMedium,
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: 'Tutup',
-                        onPressed: () {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          Navigator.of(ctx).maybePop();
-                        },
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        // HARTA TAK ALIH
-                        _sectionHeader(ctx, 'Harta Tak Alih'),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 8,
-                          children: takAlih
-                              .map(
-                                (a) =>
-                                    SizedBox(width: 280, child: _moneyField(a)),
-                              )
-                              .toList(),
-                        ),
-                        _totChip(
-                          context: ctx,
-                          label: 'Jumlah Harta Tak Alih',
-                          value: totalTakAlih,
-                        ),
-
-                        const SizedBox(height: 14),
-                        // HARTA ALIH
-                        _sectionHeader(ctx, 'Harta Alih'),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 8,
-                          children: alih
-                              .map(
-                                (a) =>
-                                    SizedBox(width: 280, child: _moneyField(a)),
-                              )
-                              .toList(),
-                        ),
-                        _totChip(
-                          context: ctx,
-                          label: 'Jumlah Harta Alih',
-                          value: totalAlih,
-                        ),
-
-                        const SizedBox(height: 14),
-                        // POTONGAN
-                        _sectionHeader(ctx, 'Potongan (Opsyenal)'),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 8,
-                          children: potongan
-                              .map(
-                                (a) =>
-                                    SizedBox(width: 280, child: _moneyField(a)),
-                              )
-                              .toList(),
-                        ),
-                        _totChip(
-                          context: ctx,
-                          label: 'Jumlah Potongan',
-                          value: totalPotongan,
-                        ),
-
-                        const SizedBox(height: 14),
-                        // GRAND TOTAL
-                        _grandTotal(ctx, grandTotal),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            for (final a in [...takAlih, ...alih, ...potongan])
-                              a.c.clear();
-                            recalc();
-                          },
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Reset Borang'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () {
-                            // apply only in RM mode
-                            FocusManager.instance.primaryFocus?.unfocus();
-                            if (ctrl.unit.value != AssetUnit.rm) {
-                              Navigator.of(ctx).maybePop();
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (parentContext.mounted) {
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Unit bukan RM. Tukar ke RM untuk guna kalkulator ini.',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              });
-                              return;
-                            }
-                            ctrl.estateController.text = grandTotal
-                                .toStringAsFixed(2);
-                            Navigator.of(ctx).maybePop();
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (parentContext.mounted) {
-                                messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Pusaka Bersih dikemas kini.',
-                                    ),
-                                  ),
-                                );
-                              }
-                            });
-                          },
-                          icon: const Icon(Icons.check_circle_outline),
-                          label: const Text('Guna Nilai Ini'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    ).whenComplete(() {
-      // cleanup: dispose all controllers created here
-      for (final a in [...takAlih, ...alih, ...potongan]) {
-        a.dispose();
-      }
-    });
-  }
-
-  // ---------- small UI helpers for the sheet ----------
-
-  Widget _sectionHeader(BuildContext context, String title) {
-    return Row(
-      children: [
-        Icon(
-          Icons.folder_outlined,
-          size: 18,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        const SizedBox(width: 6),
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ],
-    );
-  }
-
-  Widget _totChip({
-    required BuildContext context,
-    required String label,
-    required double value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8.0),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Chip(
-          visualDensity: VisualDensity.compact,
-          avatar: const Icon(Icons.summarize_outlined, size: 16),
-          label: Text('$label: RM ${value.toStringAsFixed(2)}'),
-        ),
-      ),
-    );
-  }
-
-  Widget _grandTotal(BuildContext context, double total) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.secondaryContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.account_balance_wallet_outlined),
-          const SizedBox(width: 8),
-          const Text('Pusaka Bersih'),
-          const Spacer(),
-          Text(
-            'RM ${total.toStringAsFixed(2)}',
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Build entry model
-class _Amt {
-  _Amt(this.label) : c = TextEditingController();
-  final String label;
-  final TextEditingController c;
-  double get v => double.tryParse(c.text.trim()) ?? 0.0;
-  void dispose() => c.dispose();
-}
-
-/// =========================
-/// Add Waris Sheet (stateful)
-/// =========================
-
-Future<void> _openAddWarisSheet(
-  BuildContext parentContext,
-  MembersController ctrl,
-) async {
-  // Capture parent messenger safely
-  final messenger = ScaffoldMessenger.of(parentContext);
-
-  // Avoid focused parent fields interfering
-  FocusManager.instance.primaryFocus?.unfocus();
-
-  await showModalBottomSheet(
-    context: parentContext,
-    isScrollControlled: true,
-    useSafeArea: true,
-    builder: (ctx) => _AddWarisSheet(
-      onSubmit: (member) {
-        ctrl.add(member);
-        // Close sheet first, then show snackbar from parent on next frame
-        Navigator.of(ctx).maybePop();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (parentContext.mounted) {
-            messenger.showSnackBar(
-              const SnackBar(content: Text('Waris ditambah.')),
-            );
-          }
-        });
-      },
-    ),
-  );
-}
-
-class _AddWarisSheet extends StatefulWidget {
-  const _AddWarisSheet({required this.onSubmit});
-  final void Function(FaraidMember member) onSubmit;
-
-  @override
-  State<_AddWarisSheet> createState() => _AddWarisSheetState();
-}
-
-class _AddWarisSheetState extends State<_AddWarisSheet> {
-  String relKey = relationOptions.first.key;
-  int level = 1;
-  Gender gender = Gender.male;
-  bool alive = true;
-  final nameC = TextEditingController();
-  final countC = TextEditingController(text: '1');
-
-  @override
-  void dispose() {
-    nameC.dispose();
-    countC.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cons = MediaQuery.of(context).size;
-    final isMed = cons.width >= 640;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 12,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.person_add_alt_1),
-              const SizedBox(width: 8),
-              Text(
-                'Tambah Waris',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const Spacer(),
-              IconButton(
-                tooltip: 'Tutup',
-                onPressed: () {
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  Navigator.of(context).maybePop();
-                },
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView(
-              children: [
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  value: relKey,
-                  decoration: const InputDecoration(
-                    labelText: 'Jenis Waris',
-                    prefixIcon: Icon(Icons.family_restroom_outlined),
-                  ),
-                  items: relationOptions
-                      .map(
-                        (o) => DropdownMenuItem(
-                          value: o.key,
-                          child: Text(o.label, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      relKey = v ?? relKey;
-                      if (v != null && femaleRelations.contains(v)) {
-                        gender = Gender.female;
-                      } else if (v != null && maleRelations.contains(v)) {
-                        gender = Gender.male;
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 10),
-
-                const SizedBox(height: 10),
-                DropdownButtonFormField<Gender>(
-                  value: gender,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Jantina',
-                    prefixIcon: Icon(Icons.wc_outlined),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: Gender.male, child: Text('Lelaki')),
-                    DropdownMenuItem(
-                      value: Gender.female,
-                      child: Text('Perempuan'),
-                    ),
-                  ],
-                  onChanged: (v) => setState(() => gender = v ?? gender),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: countC,
-                  decoration: const InputDecoration(
-                    labelText: 'Bilangan',
-                    prefixIcon: Icon(Icons.onetwothree_outlined),
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: nameC,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama / Catatan (opsyenal)',
-                    prefixIcon: Icon(Icons.note_alt_outlined),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _InlineSwitch(
-                  label: 'Masih hidup',
-                  value: alive,
-                  onChanged: (v) => setState(() => alive = v),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _miniChip(
-                      Icons.badge_outlined,
-                      relationOptions.firstWhere((o) => o.key == relKey).label,
-                    ),
-                    _miniChip(Icons.filter_2_outlined, 'Level $level'),
-                    _miniChip(
-                      Icons.wc_outlined,
-                      gender == Gender.male ? 'Lelaki' : 'Perempuan',
-                    ),
-                    _miniChip(
-                      Icons.onetwothree_outlined,
-                      'Bil: ${countC.text}',
-                    ),
-                    _miniChip(
-                      alive
-                          ? Icons.verified_user_outlined
-                          : Icons.cancel_outlined,
-                      alive ? 'Hidup' : 'Meninggal',
-                    ),
-                    if (nameC.text.trim().isNotEmpty)
-                      _miniChip(Icons.notes, nameC.text.trim()),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      nameC.clear();
-                      countC.text = '1';
-                      level = 1;
-                      alive = true;
-                      // auto-gender from relation
-                      if (femaleRelations.contains(relKey)) {
-                        gender = Gender.female;
-                      } else if (maleRelations.contains(relKey)) {
-                        gender = Gender.male;
-                      }
-                    });
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reset Borang'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () {
-                    final c = int.tryParse(countC.text.trim()) ?? 0;
-                    if (c <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Bilangan tidak sah.'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
-                    widget.onSubmit(
-                      FaraidMember(
-                        nameController: TextEditingController(text: nameC.text),
-                        countController: TextEditingController(
-                          text: c.toString(),
-                        ),
-                        relationKey: relKey,
-                        gender: gender,
-                        alive: alive,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('Tambah'),
-                ),
-              ),
-            ],
-          ),
-        ],
+      builder: (ctx) => AddWarisSheet(
+        onSubmit: (member) {
+          ctrl.add(member);
+          // Close sheet first, then show snackbar from parent on next frame
+          Navigator.of(ctx).maybePop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (parentContext.mounted) {
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Waris ditambah.')),
+              );
+            }
+          });
+        },
       ),
     );
   }
@@ -1342,276 +774,6 @@ Future<Uint8List> _buildPdf(MembersController ctrl, ComputeResult res) async {
   return doc.save();
 }
 
-/// =========================
-/// Compute (simplified engine inc. level-2)
-/// =========================
-
-ComputeResult _compute(MembersController ctrl) {
-  final counts = <String, int>{};
-  final blockedNotes = <String>[];
-
-  for (final m in ctrl.members) {
-    final c = int.tryParse(m.countController.text.trim()) ?? 0;
-    if (!m.alive || c <= 0) continue;
-    counts[m.relationKey] = (counts[m.relationKey] ?? 0) + c;
-  }
-
-  final deceasedMale = ctrl.deceasedGender.value == Gender.male;
-
-  // Core heirs in scope
-  final suami = counts['suami'] ?? 0;
-  final isteri = counts['isteri'] ?? 0;
-  final bapa = counts['bapa'] ?? 0;
-  final ibu = counts['ibu'] ?? 0;
-  final anakL = counts['anakL'] ?? 0;
-  final anakP = counts['anakP'] ?? 0;
-  final cucuL = counts['cucuL'] ?? 0; // via son
-  final cucuP = counts['cucuP'] ?? 0; // via son
-  final cicitL = counts['cicitL'] ?? 0; // via grandson (male line)
-  final cicitP = counts['cicitP'] ?? 0; // via grandson (male line)
-
-  final hasChild = (anakL + anakP) > 0;
-  final hasSon = anakL > 0;
-  final hasGrandchildLine = (cucuL + cucuP) > 0;
-  final hasGreatGCL = (cicitL + cicitP) > 0;
-
-  // Hijab notes (informational)
-  if (hasSon) {
-    if (hasGrandchildLine)
-      blockedNotes.add(
-        'Cucu (melalui anak lelaki) terhalang oleh anak lelaki.',
-      );
-    if (hasGreatGCL)
-      blockedNotes.add(
-        'Cicit (melalui cucu lelaki) terhalang oleh anak lelaki.',
-      );
-  } else if (!hasChild && cucuL > 0) {
-    if (hasGreatGCL)
-      blockedNotes.add(
-        'Cicit (melalui cucu lelaki) terhalang oleh cucu lelaki.',
-      );
-  }
-  if (bapa > 0) {
-    // (Within our scope no grandfathers included, so nothing to note here.)
-  }
-
-  // Shares
-  final furud = <String, double>{};
-  final asabah = <String, double>{};
-
-  // Spouses
-  if (deceasedMale && isteri > 0) furud['isteri'] = hasChild ? 1 / 8 : 1 / 4;
-  if (!deceasedMale && suami > 0) furud['suami'] = hasChild ? 1 / 4 : 1 / 2;
-
-  // Mother
-  if (ibu > 0) {
-    // In the diagram's scope, the common rule: 1/3 (no children) or 1/6 (with children)
-    furud['ibu'] = hasChild ? 1 / 6 : 1 / 3;
-  }
-
-  // Father
-  if (bapa > 0) {
-    if (hasChild) furud['bapa'] = 1 / 6; // may also take residu later
-  }
-
-  // Daughters (no sons)
-  if (anakP > 0 && anakL == 0) {
-    furud['anakP'] = anakP == 1 ? 1 / 2 : 2 / 3;
-  }
-
-  // Granddaughters via son (only when NO children)
-  if (!hasChild) {
-    if (cucuP > 0 && cucuL == 0) {
-      furud['cucuP'] = (cucuP == 1) ? 1 / 2 : 2 / 3;
-      // (Optional advanced: "tamam 2/3" with one daughter → +1/6 to granddaughter)
-    }
-  }
-
-  // Great-granddaughters via grandson (only when NO children & NO grandchildren)
-  if (!hasChild && !hasGrandchildLine) {
-    if (cicitP > 0 && cicitL == 0) {
-      furud['cicitP'] = (cicitP == 1) ? 1 / 2 : 2 / 3;
-    }
-  }
-
-  // ‘Awl if needed
-  double ft = furud.values.fold(0.0, (s, v) => s + v);
-  bool awl = false;
-  if (ft > 1.0 + 1e-12) {
-    final k = 1.0 / ft;
-    awl = true;
-    for (final kx in furud.keys.toList()) {
-      furud[kx] = furud[kx]! * k;
-    }
-    ft = 1.0;
-  }
-
-  // Residu → ordered Asabah (male-line priority: sons → grandsons → great-grandsons → father)
-  double residu = 1.0 - ft;
-
-  if (residu > 1e-12) {
-    if (anakL > 0) {
-      // Sons (+ daughters) 2:1
-      final units = (2 * anakL) + anakP;
-      if (units > 0) {
-        asabah['anakL'] = residu * (2 * anakL) / units;
-        if (anakP > 0) asabah['anakP'] = residu * (anakP) / units;
-        residu = 0.0;
-      }
-    } else if (!hasChild && (cucuL > 0 || (cucuP > 0 && cucuL > 0))) {
-      // Grandsons (+ granddaughters) 2:1
-      final units = (2 * cucuL) + cucuP;
-      if (units > 0) {
-        asabah['cucuL'] = residu * (2 * cucuL) / units;
-        if (cucuP > 0) asabah['cucuP'] = residu * (cucuP) / units;
-        residu = 0.0;
-      }
-    } else if (!hasChild &&
-        !hasGrandchildLine &&
-        (cicitL > 0 || (cicitP > 0 && cicitL > 0))) {
-      // Great-grandsons (+ great-granddaughters) 2:1
-      final units = (2 * cicitL) + cicitP;
-      if (units > 0) {
-        asabah['cicitL'] = residu * (2 * cicitL) / units;
-        if (cicitP > 0) asabah['cicitP'] = residu * (cicitP) / units;
-        residu = 0.0;
-      }
-    } else if (bapa > 0) {
-      // Father takes residue if no closer male-line descendants
-      asabah['bapa'] = residu;
-      residu = 0.0;
-    }
-  }
-
-  // Radd if still residue and no asabah received it
-  bool radd = false;
-  if (residu > 1e-12) {
-    final pool = furud.keys
-        .where((k) => k != 'suami' && k != 'isteri')
-        .toList();
-    final sum = pool.fold(0.0, (s, k) => s + (furud[k] ?? 0));
-    if (sum > 1e-12) {
-      for (final kx in pool) {
-        furud[kx] = furud[kx]! + residu * (furud[kx]! / sum);
-      }
-      radd = true;
-      residu = 0.0;
-    }
-  }
-
-  // Final by relation
-  final byKey = <String, double>{};
-  for (final e in furud.entries) {
-    byKey[e.key] = (byKey[e.key] ?? 0) + e.value;
-  }
-  for (final e in asabah.entries) {
-    byKey[e.key] = (byKey[e.key] ?? 0) + e.value;
-  }
-
-  // Expand to individuals
-  final lines = <ResultHeirLine>[];
-  double? estate = double.tryParse(ctrl.estateController.text.trim());
-  if (estate != null && estate <= 0) estate = null;
-
-  Role roleOf(String k) {
-    final f = furud[k] ?? 0.0;
-    final a = asabah[k] ?? 0.0;
-    if (f > 0 && a == 0) return Role.furud;
-    if (f == 0 && a > 0) return Role.asabah;
-    if (f > 0 && a > 0) return Role.asabah;
-    return Role.none;
-  }
-
-  void addIndividuals(String label, String key, int count, {String note = ''}) {
-    final total = byKey[key] ?? 0.0;
-    if (total <= 1e-12 || count <= 0) return;
-    final each = total / count;
-    for (int i = 1; i <= count; i++) {
-      final name = count > 1 ? '$label #$i' : label;
-      lines.add(
-        ResultHeirLine(
-          displayName: name,
-          shareFraction: each,
-          role: roleOf(key),
-          note: note,
-          value: estate == null ? null : estate * each,
-        ),
-      );
-    }
-  }
-
-  // Order of printing, matching your scope
-  if (!deceasedMale) addIndividuals('Suami', 'suami', suami);
-  if (deceasedMale)
-    addIndividuals('Isteri', 'isteri', isteri, note: 'Dibahagi sama rata');
-
-  addIndividuals('Ibu', 'ibu', ibu);
-  addIndividuals('Bapa', 'bapa', bapa);
-
-  addIndividuals('Anak Lelaki', 'anakL', anakL);
-  addIndividuals('Anak Perempuan', 'anakP', anakP);
-
-  addIndividuals('Cucu Lelaki (melalui anak lelaki)', 'cucuL', cucuL);
-  addIndividuals('Cucu Perempuan (melalui anak lelaki)', 'cucuP', cucuP);
-
-  addIndividuals('Cicit Lelaki (melalui cucu lelaki)', 'cicitL', cicitL);
-  addIndividuals('Cicit Perempuan (melalui cucu lelaki)', 'cicitP', cicitP);
-
-  return ComputeResult(
-    lines: lines,
-    blockedNotes: blockedNotes,
-    awlApplied: awl,
-    raddApplied: radd,
-  );
-}
-
-/// =========================
-/// UI bits
-/// =========================
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child});
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.topic_outlined,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 Widget _miniChip(IconData icon, String label) {
   return Builder(
     builder: (context) {
@@ -1633,38 +795,6 @@ Widget _miniChip(IconData icon, String label) {
       );
     },
   );
-}
-
-class _InlineSwitch extends StatelessWidget {
-  const _InlineSwitch({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return InputDecorator(
-      decoration: const InputDecoration(
-        border: InputBorder.none,
-        isDense: true,
-        contentPadding: EdgeInsets.zero,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.heart_broken, size: 18),
-          const SizedBox(width: 6),
-          Text(label),
-          const SizedBox(width: 6),
-          Switch.adaptive(value: value, onChanged: onChanged),
-        ],
-      ),
-    );
-  }
 }
 
 /// =========================
