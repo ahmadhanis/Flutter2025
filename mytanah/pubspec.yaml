@@ -29,8 +29,11 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   cupertino_icons: ^1.0.8
+  expansion_tile_card: ^3.0.0
   flutter:
     sdk: flutter
+  google_fonts: ^6.3.3
+  intl: ^0.20.2
   pdf: ^3.11.3
   printing: ^5.14.2
 

@@ -5,7 +5,7 @@ import 'package:mytanah/models/enums.dart';
 import 'package:mytanah/myfaraidcalc.dart';
 
 class AddWarisSheet extends StatefulWidget {
-  AddWarisSheet({required this.onSubmit});
+  const AddWarisSheet({super.key, required this.onSubmit});
   final void Function(FaraidMember member) onSubmit;
 
   @override
@@ -29,8 +29,8 @@ class _AddWarisSheetState extends State<AddWarisSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final cons = MediaQuery.of(context).size;
-    final isMed = cons.width >= 640;
+    // final cons = MediaQuery.of(context).size;
+    // final isMed = cons.width >= 640;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -67,7 +67,7 @@ class _AddWarisSheetState extends State<AddWarisSheet> {
               children: [
                 DropdownButtonFormField<String>(
                   isExpanded: true,
-                  value: relKey,
+                  initialValue: relKey,
                   decoration: const InputDecoration(
                     labelText: 'Jenis Waris',
                     prefixIcon: Icon(Icons.family_restroom_outlined),
@@ -95,7 +95,7 @@ class _AddWarisSheetState extends State<AddWarisSheet> {
 
                 const SizedBox(height: 10),
                 DropdownButtonFormField<Gender>(
-                  value: gender,
+                  initialValue: gender,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Jantina',

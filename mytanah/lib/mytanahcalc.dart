@@ -1,5 +1,9 @@
+// ignore_for_file: avoid_print
+
+import 'package:expansion_tile_card/expansion_tile_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:mytanah/division.dart';
 
 // PDF & printing
@@ -20,6 +24,7 @@ class _MyTanahCalState extends State<MyTanahCal> {
   final TextEditingController _hektarController = TextEditingController();
   final TextEditingController _geranController = TextEditingController();
   final TextEditingController _lotController = TextEditingController();
+  final FocusNode _hektarFocusNode = FocusNode();
 
   // State nilai
   double _cukai = 0;
@@ -30,6 +35,7 @@ class _MyTanahCalState extends State<MyTanahCal> {
   final double factorRelung = 3.4749196;
   final double factorKakiPersegi = 107639;
   final double factorMeterPersegi = 10000;
+  bool _isMaklumatExpanded = true; // Add this to your state
 
   // Senarai pembahagian dinamik
   List<Division> divisions = [];
@@ -44,10 +50,26 @@ class _MyTanahCalState extends State<MyTanahCal> {
 
   // Tambah/Buang pembahagian
   void _addDivision() {
+    //if jumlah pecahan == 100% show snackbar
+
     if (_hektarController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Masukkan nilai hektar dahulu.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      FocusScope.of(context).requestFocus(_hektarFocusNode);
+      _isMaklumatExpanded = true;
+      return;
+    }
+
+    final totalFraction = divisions.fold(0.0, (sum, d) => sum + d.fraction);
+    print(totalFraction);
+    if (totalFraction >= 1 && divisions.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Jumlah pecahan melebihi 100%.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -134,6 +156,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
 
     final totalTaxAllocated = cukai > 0 ? cukai * totalFraction : 0.0;
     final remainingTax = cukai > 0 ? (cukai - totalTaxAllocated) : 0.0;
+    final now = DateTime.now();
+    final timestamp = DateFormat('dd/MM/yyyy hh:mm a').format(now);
 
     doc.addPage(
       pw.MultiPage(
@@ -149,8 +173,15 @@ class _MyTanahCalState extends State<MyTanahCal> {
           ),
         ),
         build: (context) => [
-         pw.Text('Laporan Pembahagian Tanah',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            'Laporan Pembahagian Tanah',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            'Dicetak pada: $timestamp',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey),
+          ),
           pw.SizedBox(height: 6),
           pw.Text(
             'No Geran: ${_geranController.text}  |  No Lot: ${_lotController.text}',
@@ -168,6 +199,26 @@ class _MyTanahCalState extends State<MyTanahCal> {
             border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey500),
             defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
             children: rows,
+          ),
+          pw.SizedBox(height: 18),
+          pw.Divider(),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            'Harta Pusaka Kedah Perlis',
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            '019-552 2842 (Hj. Rosli)',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+          pw.Text(
+            '017-403 6962 (Huda)',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+          pw.Text(
+            '013-593 6680 (Hidayah)',
+            style: const pw.TextStyle(fontSize: 10),
           ),
         ],
       ),
@@ -268,45 +319,50 @@ class _MyTanahCalState extends State<MyTanahCal> {
 
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Pembahagian Tanah'),
+              elevation: 3,
+              backgroundColor: Colors.white,
+              title: const Text(
+                'Pembahagian Tanah',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.black87,
+                ),
+              ),
               centerTitle: true,
               actions: [
                 IconButton(
                   tooltip: 'Reset',
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.green),
                   onPressed: () {
-                    setState(() {
-                      _cukaiController.clear();
-                      _hektarController.clear();
-                      _geranController.clear();
-                      _lotController.clear();
-                      _cukai = 0;
-                      _hektar = 0;
-                      divisions.clear();
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Skrin telah direset.'),
-                        duration: Duration(milliseconds: 1200),
-                      ),
-                    );
+                    //showdialog reset
+                    confirmResetDialog();
                   },
                 ),
                 IconButton(
                   tooltip: 'Cetak/Export PDF',
-                  onPressed: () => _printPdf(
-                    totalFraction: divisions.fold(
-                      0.0,
-                      (sum, d) => sum + d.fraction,
-                    ),
-                    hektar: _hektar,
-                    cukai: _cukai,
+                  icon: const Icon(
+                    Icons.picture_as_pdf_rounded,
+                    color: Colors.blueGrey,
                   ),
-                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  onPressed: () {
+                    //if baki no pembahagian is avaialble show dialog
+                    if (divisions.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Tiada pembahagian tanah.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    } else {
+                      //showdialog print pdf
+                      showDialogPrintPDF();
+                    }
+                  },
                 ),
                 IconButton(
                   tooltip: 'Kongsi PDF',
-                  icon: const Icon(Icons.share_outlined),
+                  icon: const Icon(Icons.share_rounded, color: Colors.teal),
                   onPressed: () => _sharePdf(
                     totalFraction: divisions.fold(
                       0.0,
@@ -317,15 +373,21 @@ class _MyTanahCalState extends State<MyTanahCal> {
                   ),
                 ),
               ],
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(12),
+                ),
+              ),
             ),
+
             floatingActionButton: FloatingActionButton.extended(
               onPressed: _addDivision,
               icon: const Icon(Icons.add),
-              label: const Text('Tambah Pembahagian'),
+              label: const Text('Tambah'),
             ),
             body: LayoutBuilder(
               builder: (context, constraints) {
-                final isMedium = constraints.maxWidth >= 640;
+                // final isMedium = constraints.maxWidth >= 640;
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(12.0),
@@ -336,169 +398,226 @@ class _MyTanahCalState extends State<MyTanahCal> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // ===== INPUTS =====
-                          _SectionCard(
-                            title: 'Input',
-                            child: Wrap(
-                              spacing: 10,
-                              runSpacing: 8,
-                              children: [
-                                // Row 1: No Geran & No Lot
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          right: 6,
-                                        ),
-                                        child: TextField(
-                                          controller: _geranController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'No Geran',
-                                            prefixIcon: Icon(
-                                              Icons.description_outlined,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(left: 6),
-                                        child: TextField(
-                                          controller: _lotController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'No Lot',
-                                            prefixIcon: Icon(
-                                              Icons.map_outlined,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                          ExpansionTileCard(
+                            // initialPadding: const EdgeInsets.all(0),
+                            // baseColor: Theme.of(context).colorScheme.surface,
+                            initiallyExpanded: true,
+                            elevation: 1.5,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
 
-                                const SizedBox(height: 10),
-
-                                // Row 2: Jumlah Cukai & Jumlah Hektar
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          right: 6,
-                                        ),
-                                        child: TextField(
-                                          controller: _cukaiController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Jumlah Cukai (RM)',
-                                            prefixText: 'RM ',
-                                            hintText: 'cth: 1200.00',
-                                            prefixIcon: Icon(
-                                              Icons.payments_outlined,
-                                            ),
-                                          ),
-                                          keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                          onChanged: _updateCukai,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(left: 6),
-                                        child: TextField(
-                                          controller: _hektarController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Jumlah Hektar',
-                                            hintText: 'cth: 1.5',
-                                            prefixIcon: Icon(
-                                              Icons.landscape_outlined,
-                                            ),
-                                          ),
-                                          keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                          onChanged: _updateHektar,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                            title: Row(
+                              children: const [
+                                Icon(Icons.info_outline_rounded),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Maklumat Tanah',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ],
                             ),
+                            trailing: Icon(
+                              _isMaklumatExpanded
+                                  ? Icons.expand_more
+                                  : Icons.expand_less,
+                            ),
+                            onExpansionChanged: (value) {
+                              setState(() {
+                                _isMaklumatExpanded = value;
+                              });
+                            },
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
+                                child: Column(
+                                  children: [
+                                    // Row 1: No Geran & No Lot
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _geranController,
+                                            decoration: InputDecoration(
+                                              labelText: 'No Geran',
+                                              hintText: 'cth: GM123',
+                                              prefixIcon: const Icon(
+                                                Icons.description_outlined,
+                                              ),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _lotController,
+                                            decoration: InputDecoration(
+                                              labelText: 'No Lot',
+                                              hintText: 'cth: Lot 456',
+                                              prefixIcon: const Icon(
+                                                Icons.map_outlined,
+                                              ),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Row 2: Jumlah Cukai & Hektar
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _cukaiController,
+                                            keyboardType:
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
+                                            onChanged: _updateCukai,
+                                            decoration: InputDecoration(
+                                              labelText: 'Jumlah Cukai',
+                                              prefixText: 'RM ',
+                                              hintText: 'cth: 1200.00',
+                                              prefixIcon: const Icon(
+                                                Icons.payments_outlined,
+                                              ),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _hektarController,
+                                            focusNode:
+                                                _hektarFocusNode, // Attach focus node here
+                                            keyboardType:
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
+                                            onChanged: _updateHektar,
+                                            decoration: InputDecoration(
+                                              labelText: 'Jumlah Hektar',
+                                              hintText: 'cth: 1.5',
+                                              prefixIcon: const Icon(
+                                                Icons.landscape_outlined,
+                                              ),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
 
                           const SizedBox(height: 10),
 
                           // ===== RINGKASAN COMPACT =====
-                          _SectionCard(
-                            title: 'Ringkasan',
-                            child: Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                _MiniChip(
-                                  icon: Icons.pie_chart_outline_rounded,
-                                  label:
-                                      'Pecahan: ${totalFraction.toStringAsFixed(4)} '
-                                      '(${(totalFraction * 100).toStringAsFixed(2)}%)',
-                                ),
-                                if (totalFraction <= 1)
-                                  _MiniChip(
-                                    icon: Icons.incomplete_circle_outlined,
-                                    label:
-                                        'Baki: ${(1 - totalFraction).toStringAsFixed(4)} '
-                                        '(${((1 - totalFraction) * 100).toStringAsFixed(2)}%)',
-                                  )
-                                else
-                                  _MiniChip.error(
-                                    icon: Icons.warning_amber_rounded,
-                                    label: 'Pecahan > 100%',
+                          ExpansionTileCard(
+                            initiallyExpanded: false,
+                            elevation: 1.5,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            title: Row(
+                              children: const [
+                                Icon(Icons.summarize_outlined),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Ringkasan Pembahagian',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
                                   ),
-                                _MiniChip(
-                                  icon: Icons.square_foot_outlined,
-                                  label:
-                                      'Ekar: ${totalEkar.toStringAsFixed(7)}',
                                 ),
-                                _MiniChip(
-                                  icon: Icons.terrain_outlined,
-                                  label:
-                                      'Relung: ${totalRelung.toStringAsFixed(7)}',
-                                ),
-                                _MiniChip(
-                                  icon: Icons.grid_on_outlined,
-                                  label:
-                                      'Kp²: ${totalKakiPersegi.toStringAsFixed(7)}',
-                                ),
-                                _MiniChip(
-                                  icon: Icons.straighten_outlined,
-                                  label:
-                                      'm²: ${totalMeterPersegi.toStringAsFixed(7)}',
-                                ),
-                                if (hasTax)
-                                  _MiniChip(
-                                    icon: Icons.payments_outlined,
-                                    label:
-                                        'Cukai: RM ${_cukai.toStringAsFixed(2)}',
-                                  ),
-                                if (hasTax)
-                                  _MiniChip(
-                                    icon: Icons.call_split_outlined,
-                                    label:
-                                        'Diagih: RM ${totalTaxAllocated.toStringAsFixed(2)}',
-                                  ),
-                                if (hasTax)
-                                  _MiniChip(
-                                    icon: Icons.pending_outlined,
-                                    label:
-                                        'Baki: RM ${remainingTax.toStringAsFixed(2)}',
-                                  ),
                               ],
                             ),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSectionHeader("1. Pecahan & Baki"),
+                                    _buildSummaryTable([
+                                      [
+                                        "Jumlah Pecahan",
+                                        "${totalFraction.toStringAsFixed(5)} (${(totalFraction * 100).toStringAsFixed(5)}%)",
+                                      ],
+                                      [
+                                        "Baki Pecahan",
+                                        totalFraction <= 1
+                                            ? "${(1 - totalFraction).toStringAsFixed(4)} (${((1 - totalFraction) * 100).toStringAsFixed(4)}%)"
+                                            : "❗ Melebihi 100% ",
+                                      ],
+                                    ], warningIndex: totalFraction > 1 ? 1 : null),
+
+                                    const SizedBox(height: 20),
+
+                                    _buildSectionHeader("2. Luas Kawasan"),
+                                    _buildSummaryTable([
+                                      ["Ekar", totalEkar.toStringAsFixed(7)],
+                                      [
+                                        "Relung",
+                                        totalRelung.toStringAsFixed(7),
+                                      ],
+                                      [
+                                        "Kaki Persegi",
+                                        totalKakiPersegi.toStringAsFixed(7),
+                                      ],
+                                      [
+                                        "Meter Persegi",
+                                        totalMeterPersegi.toStringAsFixed(7),
+                                      ],
+                                    ]),
+
+                                    const SizedBox(height: 20),
+
+                                    if (hasTax) ...[
+                                      _buildSectionHeader("3. Cukai"),
+                                      _buildSummaryTable([
+                                        [
+                                          "Jumlah Cukai",
+                                          "RM ${_cukai.toStringAsFixed(2)}",
+                                        ],
+                                        [
+                                          "Cukai Diagih",
+                                          "RM ${totalTaxAllocated.toStringAsFixed(2)}",
+                                        ],
+                                        [
+                                          "Baki Cukai",
+                                          "RM ${remainingTax.toStringAsFixed(2)}",
+                                        ],
+                                      ]),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
 
                           const SizedBox(height: 10),
@@ -537,7 +656,7 @@ class _MyTanahCalState extends State<MyTanahCal> {
                                         context,
                                       ).colorScheme.outlineVariant,
                                     ),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.fromLTRB(
@@ -640,41 +759,52 @@ class _MyTanahCalState extends State<MyTanahCal> {
                                         ),
 
                                         const SizedBox(height: 8),
+
                                         // Compact metrics as small chips
-                                        Wrap(
-                                          spacing: 6,
-                                          runSpacing: 6,
+                                        Table(
+                                          columnWidths: const {
+                                            0: IntrinsicColumnWidth(),
+                                            1: FlexColumnWidth(),
+                                          },
+                                          defaultVerticalAlignment:
+                                              TableCellVerticalAlignment.middle,
                                           children: [
-                                            _MiniChip(
-                                              icon: Icons.landscape_outlined,
-                                              label:
-                                                  'Ha ${divisionHektar.toStringAsFixed(10)}',
+                                            _buildSummaryRowPembagi(
+                                              Icons.landscape_outlined,
+                                              'Hektar',
+                                              divisionHektar.toStringAsFixed(
+                                                10,
+                                              ),
                                             ),
-                                            _MiniChip(
-                                              icon: Icons.square_foot_outlined,
-                                              label:
-                                                  'Ekar ${divisionEkar.toStringAsFixed(10)}',
+                                            _buildSummaryRowPembagi(
+                                              Icons.square_foot_outlined,
+                                              'Ekar',
+                                              divisionEkar.toStringAsFixed(10),
                                             ),
-                                            _MiniChip(
-                                              icon: Icons.terrain_outlined,
-                                              label:
-                                                  'Relung ${divisionRelung.toStringAsFixed(10)}',
+                                            _buildSummaryRowPembagi(
+                                              Icons.terrain_outlined,
+                                              'Relung',
+                                              divisionRelung.toStringAsFixed(
+                                                10,
+                                              ),
                                             ),
-                                            _MiniChip(
-                                              icon: Icons.grid_on_outlined,
-                                              label:
-                                                  'Kp² ${divisionKakiPersegi.toStringAsFixed(7)}',
+                                            _buildSummaryRowPembagi(
+                                              Icons.grid_on_outlined,
+                                              'Kaki Persegi',
+                                              divisionKakiPersegi
+                                                  .toStringAsFixed(7),
                                             ),
-                                            _MiniChip(
-                                              icon: Icons.straighten_outlined,
-                                              label:
-                                                  'm² ${divisionMeterPersegi.toStringAsFixed(0)}',
+                                            _buildSummaryRowPembagi(
+                                              Icons.straighten_outlined,
+                                              'Meter Persegi',
+                                              divisionMeterPersegi
+                                                  .toStringAsFixed(0),
                                             ),
                                             if (_cukai > 0)
-                                              _MiniChip(
-                                                icon: Icons.payments_outlined,
-                                                label:
-                                                    'Cukai RM ${divisionTax.toStringAsFixed(2)}',
+                                              _buildSummaryRowPembagi(
+                                                Icons.payments_outlined,
+                                                'Cukai (RM)',
+                                                divisionTax.toStringAsFixed(2),
                                               ),
                                           ],
                                         ),
@@ -699,6 +829,216 @@ class _MyTanahCalState extends State<MyTanahCal> {
       ),
     );
   }
+
+  TableRow _buildSummaryRowPembagi(IconData icon, String label, String value) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6.0),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: Colors.green[700]),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6.0),
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              fontSize: 14,
+              // fontWeight: FontWeight.w600,
+              fontFamily: 'monospace',
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.black,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryTable(List<List<String>> rows, {int? warningIndex}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+      child: Table(
+        columnWidths: const {0: FlexColumnWidth(2), 1: FlexColumnWidth(3)},
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        children: rows.asMap().entries.map((entry) {
+          final index = entry.key;
+          final row = entry.value;
+          final isWarning = warningIndex == index;
+
+          return TableRow(
+            decoration: BoxDecoration(
+              color: isWarning ? Colors.red.shade50 : Colors.transparent,
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Text(
+                  row[0],
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: isWarning ? Colors.red : Colors.black87,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Text(
+                  row[1],
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    color: isWarning ? Colors.red : Colors.black87,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  void confirmResetDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('Reset?'),
+          ],
+        ),
+        content: const Text(
+          'Adakah anda pasti ingin mereset semua maklumat pembahagian tanah? Tindakan ini tidak boleh dipulihkan.',
+          style: TextStyle(height: 1.4),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.cancel),
+            label: const Text('Batal'),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.check_circle),
+            label: const Text('Reset'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _cukaiController.clear();
+                _hektarController.clear();
+                _geranController.clear();
+                _lotController.clear();
+                _cukai = 0;
+                _hektar = 0;
+                divisions.clear();
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Skrin telah direset.'),
+                  backgroundColor: Colors.redAccent,
+                  duration: Duration(milliseconds: 1200),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  showDialogPrintPDF() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('Print PDF?'),
+          ],
+        ),
+        content: const Text(
+          'Adakah anda pasti ingin mencetak skrin PDF?',
+          style: TextStyle(height: 1.4),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.cancel),
+            label: const Text('Batal'),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.check_circle),
+            label: const Text('Print'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              _printPdf(
+                totalFraction: divisions.fold(
+                  0.0,
+                  (sum, d) => sum + d.fraction,
+                ),
+                hektar: _hektar,
+                cukai: _cukai,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ===== Helper UI widgets =====
@@ -711,115 +1051,34 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      elevation: 2,
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        padding: const EdgeInsets.all(8),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(
-                  Icons.topic_outlined,
-                  size: 18,
+                  Icons.input_outlined,
                   color: Theme.of(context).colorScheme.primary,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Text(
                   title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             child,
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _MiniChip extends StatelessWidget {
-  const _MiniChip({
-    required this.icon,
-    required this.label,
-    this.isError = false,
-    this.enableTapCopyAlso =
-        false, // optional: tap-to-copy fallback (web/desktop)
-  });
-
-  factory _MiniChip.error({
-    required IconData icon,
-    required String label,
-    bool enableTapCopyAlso = false,
-  }) => _MiniChip(
-    icon: icon,
-    label: label,
-    isError: true,
-    enableTapCopyAlso: enableTapCopyAlso,
-  );
-
-  final IconData icon;
-  final String label;
-  final bool isError;
-  final bool enableTapCopyAlso;
-
-  void _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: label));
-    HapticFeedback.selectionClick();
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('Disalin: $label'),
-        duration: const Duration(milliseconds: 1200),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final bg = isError ? cs.errorContainer : cs.secondaryContainer;
-    final fg = isError ? cs.onErrorContainer : cs.onSecondaryContainer;
-
-    final chip = Chip(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-      visualDensity: VisualDensity.compact,
-      avatar: Icon(icon, size: 14, color: fg),
-      label: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w600,
-        ),
-        overflow: TextOverflow.ellipsis,
-      ),
-      backgroundColor: bg,
-      side: BorderSide(color: cs.outlineVariant),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-
-    // Make the chip copyable on long press (and optional tap)
-    return Tooltip(
-      message: 'Long press to copy',
-      waitDuration: const Duration(milliseconds: 500),
-      child: InkWell(
-        onLongPress: () => _copy(context),
-        onTap: enableTapCopyAlso ? () => _copy(context) : null, // optional
-        borderRadius: BorderRadius.circular(20),
-        splashColor: fg.withOpacity(0.12),
-        highlightColor: Colors.transparent,
-        child: chip,
       ),
     );
   }

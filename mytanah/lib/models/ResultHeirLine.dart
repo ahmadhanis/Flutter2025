@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'package:mytanah/models/enums.dart';
 
 class ResultHeirLine {

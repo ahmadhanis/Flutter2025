@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mytanah/kiraluaspenjuru.dart';
-import 'package:mytanah/myfaraidcalc.dart';
 import 'package:mytanah/mytanahcalc.dart';
 
 class MainMenu extends StatelessWidget {
@@ -53,29 +51,6 @@ class MainMenu extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 20),
-                _buildMenuButton(
-                  context,
-                  title: 'Kalkulator Faraid',
-                  icon: Icons.family_restroom,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => MyFaraidCalc()),
-                    );
-                  },
-                ),
-                // Kira Luas Pepenjuru Button
-                // _buildMenuButton(
-                //   context,
-                //   title: 'Kira Luas Pepenjuru',
-                //   icon: Icons.square_foot_outlined,
-                //   onTap: () {
-                //     Navigator.push(
-                //       context,
-                //       MaterialPageRoute(builder: (context) => const KiraLuasPepenjuru()),
-                //     );
-                //   },
-                // ),
               ],
             ),
           ),
@@ -101,7 +76,7 @@ class MainMenu extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),

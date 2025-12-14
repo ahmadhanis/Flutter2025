@@ -5,7 +5,7 @@ import 'package:mytanah/models/enums.dart';
 
 class EstateCalculatorSheet extends StatefulWidget {
   final MembersController ctrl;
-  const EstateCalculatorSheet({required this.ctrl});
+  const EstateCalculatorSheet({super.key, required this.ctrl});
 
   @override
   State<EstateCalculatorSheet> createState() => _EstateCalculatorSheetState();

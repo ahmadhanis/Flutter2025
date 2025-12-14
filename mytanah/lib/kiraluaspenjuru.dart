@@ -37,7 +37,10 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
   }
 
   void _initializeLengthControllers() {
-    _lengthControllers = List.generate(_selectedPenjuru, (index) => TextEditingController());
+    _lengthControllers = List.generate(
+      _selectedPenjuru,
+      (index) => TextEditingController(),
+    );
   }
 
   void _updatePenjuru(int value) {
@@ -48,9 +51,13 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
   }
 
   double _calculateArea() {
-    if (_lengthControllers.any((controller) => controller.text.isEmpty)) return 0.0;
+    if (_lengthControllers.any((controller) => controller.text.isEmpty)) {
+      return 0.0;
+    }
 
-    List<double> sides = _lengthControllers.map((c) => double.tryParse(c.text) ?? 0).toList();
+    List<double> sides = _lengthControllers
+        .map((c) => double.tryParse(c.text) ?? 0)
+        .toList();
 
     if (_selectedPenjuru == 3) {
       // Heron's formula for triangle
@@ -83,7 +90,7 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kira Luas Penjuru'),
-         backgroundColor: Colors.lightGreen,
+        backgroundColor: Colors.lightGreen,
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -96,10 +103,15 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
               initialValue: _selectedPenjuru,
               decoration: InputDecoration(
                 labelText: 'Pilih Jumlah Penjuru',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
               ),
               items: _penjuruOptions.map((penjuru) {
-                return DropdownMenuItem(value: penjuru, child: Text('$penjuru Penjuru'));
+                return DropdownMenuItem(
+                  value: penjuru,
+                  child: Text('$penjuru Penjuru'),
+                );
               }).toList(),
               onChanged: (value) {
                 _updatePenjuru(value!);
@@ -116,11 +128,16 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
                     controller: _lengthControllers[index],
                     decoration: InputDecoration(
                       labelText: 'Panjang Sisi ${index + 1} (Meter)',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
                       filled: true,
-                      fillColor: _lineColors[index % _lineColors.length].withOpacity(0.2),
+                      fillColor: _lineColors[index % _lineColors.length]
+                          .withValues(alpha: 0.2),
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => setState(() {}),
                   ),
                 );
@@ -134,7 +151,11 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
                 width: 200,
                 height: 200,
                 child: CustomPaint(
-                  painter: PolygonPainter(_selectedPenjuru, _lengthControllers, _lineColors),
+                  painter: PolygonPainter(
+                    _selectedPenjuru,
+                    _lengthControllers,
+                    _lineColors,
+                  ),
                 ),
               ),
             ),
@@ -145,11 +166,17 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
               'Luas Kawasan:',
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            _buildConversionRow('Meter Persegi', areaMeterPersegi.toStringAsFixed(7)),
+            _buildConversionRow(
+              'Meter Persegi',
+              areaMeterPersegi.toStringAsFixed(7),
+            ),
             _buildConversionRow('Hektar', areaHektar.toStringAsFixed(7)),
             _buildConversionRow('Ekar', areaEkar.toStringAsFixed(7)),
             _buildConversionRow('Relung', areaRelung.toStringAsFixed(7)),
-            _buildConversionRow('Kaki Persegi', areaKakiPersegi.toStringAsFixed(7)),
+            _buildConversionRow(
+              'Kaki Persegi',
+              areaKakiPersegi.toStringAsFixed(7),
+            ),
           ],
         ),
       ),
@@ -162,7 +189,10 @@ class _KiraLuasPepenjuruState extends State<KiraLuasPepenjuru> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
           Text(value, style: const TextStyle(fontSize: 16)),
         ],
       ),
@@ -181,14 +211,18 @@ class PolygonPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     double centerX = size.width / 2;
     double centerY = size.height / 2;
-    double maxLength = lengthControllers.map((c) => double.tryParse(c.text) ?? 0).reduce((a, b) => a > b ? a : b);
+    double maxLength = lengthControllers
+        .map((c) => double.tryParse(c.text) ?? 0)
+        .reduce((a, b) => a > b ? a : b);
     double scaleFactor = (size.width / 2.2) / (maxLength > 0 ? maxLength : 1);
 
     List<Offset> points = [];
 
     for (int i = 0; i < sides; i++) {
       double angle = (2 * pi / sides) * i;
-      double length = (double.tryParse(lengthControllers[i].text) ?? maxLength) * scaleFactor;
+      double length =
+          (double.tryParse(lengthControllers[i].text) ?? maxLength) *
+          scaleFactor;
       double x = centerX + length * cos(angle);
       double y = centerY + length * sin(angle);
       points.add(Offset(x, y));

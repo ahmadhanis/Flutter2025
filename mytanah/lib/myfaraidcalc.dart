@@ -2,12 +2,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mytanah/addwarissheet.dart';
 import 'package:mytanah/controllers/MembersController.dart' hide Gender;
-import 'package:mytanah/controllers/amt.dart';
 import 'package:mytanah/engine/faraid_engine.dart';
 import 'package:mytanah/estatecalculatorsheet.dart';
 import 'package:mytanah/models/ComputeResult.dart';
-import 'package:mytanah/models/FaraidMember.dart';
-import 'package:mytanah/models/ResultHeirLine.dart';
 import 'package:mytanah/models/enums.dart';
 import 'package:mytanah/sectioncard.dart';
 import 'package:pdf/pdf.dart';
@@ -125,7 +122,7 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
             return LayoutBuilder(
               builder: (context, cons) {
                 final isMed = cons.maxWidth >= 640;
-                final isWide = cons.maxWidth >= 900;
+                // final isWide = cons.maxWidth >= 900;
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Center(
@@ -195,7 +192,7 @@ class _MyFaraidCalcState extends State<MyFaraidCalc> {
                                 SizedBox(
                                   width: isMed ? 220 : double.infinity,
                                   child: DropdownButtonFormField<AssetUnit>(
-                                    value: ctrl.unit.value,
+                                    initialValue: ctrl.unit.value,
                                     isExpanded: true,
                                     decoration: const InputDecoration(
                                       labelText: 'Unit',
@@ -505,9 +502,9 @@ Future<void> _showResultPopup(
                           ? Icons.landscape_outlined
                           : Icons.percent,
                       unit == AssetUnit.rm
-                          ? 'Pusaka RM ${estate!.toStringAsFixed(2)}'
+                          ? 'Pusaka RM ${estate.toStringAsFixed(2)}'
                           : unit == AssetUnit.hektar
-                          ? 'Pusaka ${estate!.toStringAsFixed(7)} ha'
+                          ? 'Pusaka ${estate.toStringAsFixed(7)} ha'
                           : 'Pecahan sahaja',
                     ),
                 ],
@@ -741,9 +738,9 @@ Future<Uint8List> _buildPdf(MembersController ctrl, ComputeResult res) async {
                     padding: const pw.EdgeInsets.only(left: 6),
                     child: _badge(
                       unit == AssetUnit.rm
-                          ? 'Pusaka RM ${fmtMoney(estate!)}'
+                          ? 'Pusaka RM ${fmtMoney(estate)}'
                           : unit == AssetUnit.hektar
-                          ? 'Pusaka ${fmtLand(estate!)} ha'
+                          ? 'Pusaka ${fmtLand(estate)} ha'
                           : 'Pecahan sahaja',
                     ),
                   ),
