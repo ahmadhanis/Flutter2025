@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mytanah/mytanahcalc.dart';
+import 'package:mytanah/viewtanahscreen.dart';
 
 class MainMenu extends StatelessWidget {
   const MainMenu({super.key});
@@ -44,13 +45,27 @@ class MainMenu extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const MyTanahCal(),
+                        builder: (context) =>
+                            const MyTanahCal(pembahagianList: []),
                       ),
                     );
                   },
                 ),
 
                 const SizedBox(height: 20),
+                _buildMenuButton(
+                  context,
+                  title: 'Rekod Geran',
+                  icon: Icons.calculate_outlined,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ViewTanahScreen(),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),

@@ -1,10 +1,13 @@
 // ignore_for_file: avoid_print
 
+import 'dart:developer';
+
 import 'package:expansion_tile_card/expansion_tile_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:mytanah/division.dart';
+import 'package:mytanah/sqlite_helper.dart';
 
 // PDF & printing
 import 'package:pdf/widgets.dart' as pw;
@@ -12,7 +15,22 @@ import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 
 class MyTanahCal extends StatefulWidget {
-  const MyTanahCal({super.key});
+  final String? noGeran;
+  final String? noLot;
+  final double? cukai;
+  final double? hektar;
+  final List<Division>? divisions;
+  final List pembahagianList;
+
+  const MyTanahCal({
+    super.key,
+    this.noGeran,
+    this.noLot,
+    this.cukai,
+    this.hektar,
+    this.divisions,
+    required this.pembahagianList,
+  });
 
   @override
   State<MyTanahCal> createState() => _MyTanahCalState();
@@ -39,7 +57,6 @@ class _MyTanahCalState extends State<MyTanahCal> {
 
   // Senarai pembahagian dinamik
   List<Division> divisions = [];
-
   // Kemas kini nilai cukai dan hektar
   void _updateCukai(String value) => setState(() {
     _cukai = double.tryParse(value) ?? 0;
@@ -79,6 +96,37 @@ class _MyTanahCalState extends State<MyTanahCal> {
   }
 
   void _removeDivision(int index) => setState(() => divisions.removeAt(index));
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.noGeran != null) {
+      _geranController.text = widget.noGeran!;
+    }
+    if (widget.noLot != null) {
+      _lotController.text = widget.noLot!;
+    }
+    if (widget.cukai != null) {
+      _cukaiController.text = widget.cukai!.toString();
+    }
+    if (widget.hektar != null) {
+      _hektarController.text = widget.hektar!.toString();
+    }
+    if (widget.divisions != null) {
+      divisions = widget.divisions!;
+    }
+    divisions = widget.pembahagianList.map<Division>((e) {
+      print(e.toString());
+      return Division(
+        numerator: e['pembilang'].toString(),
+        denominator: e['penyebut'].toString(),
+      );
+    }).toList();
+    if (_hektarController.text.isNotEmpty) {
+      _updateHektar(_hektarController.text);
+    }
+  }
 
   @override
   void dispose() {
@@ -320,7 +368,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
           return Scaffold(
             appBar: AppBar(
               elevation: 3,
-              backgroundColor: Colors.white,
+              //implement green tint background
+              backgroundColor: const Color(0xFF2D6A4F).withValues(alpha: 0.5),
               title: const Text(
                 'Pembahagian Tanah',
                 style: TextStyle(
@@ -535,93 +584,6 @@ class _MyTanahCalState extends State<MyTanahCal> {
 
                           const SizedBox(height: 10),
 
-                          // ===== RINGKASAN COMPACT =====
-                          ExpansionTileCard(
-                            initiallyExpanded: false,
-                            elevation: 1.5,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            title: Row(
-                              children: const [
-                                Icon(Icons.summarize_outlined),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Ringkasan Pembahagian',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildSectionHeader("1. Pecahan & Baki"),
-                                    _buildSummaryTable([
-                                      [
-                                        "Jumlah Pecahan",
-                                        "${totalFraction.toStringAsFixed(5)} (${(totalFraction * 100).toStringAsFixed(5)}%)",
-                                      ],
-                                      [
-                                        "Baki Pecahan",
-                                        totalFraction <= 1
-                                            ? "${(1 - totalFraction).toStringAsFixed(4)} (${((1 - totalFraction) * 100).toStringAsFixed(4)}%)"
-                                            : "❗ Melebihi 100% ",
-                                      ],
-                                    ], warningIndex: totalFraction > 1 ? 1 : null),
-
-                                    const SizedBox(height: 20),
-
-                                    _buildSectionHeader("2. Luas Kawasan"),
-                                    _buildSummaryTable([
-                                      ["Ekar", totalEkar.toStringAsFixed(7)],
-                                      [
-                                        "Relung",
-                                        totalRelung.toStringAsFixed(7),
-                                      ],
-                                      [
-                                        "Kaki Persegi",
-                                        totalKakiPersegi.toStringAsFixed(7),
-                                      ],
-                                      [
-                                        "Meter Persegi",
-                                        totalMeterPersegi.toStringAsFixed(7),
-                                      ],
-                                    ]),
-
-                                    const SizedBox(height: 20),
-
-                                    if (hasTax) ...[
-                                      _buildSectionHeader("3. Cukai"),
-                                      _buildSummaryTable([
-                                        [
-                                          "Jumlah Cukai",
-                                          "RM ${_cukai.toStringAsFixed(2)}",
-                                        ],
-                                        [
-                                          "Cukai Diagih",
-                                          "RM ${totalTaxAllocated.toStringAsFixed(2)}",
-                                        ],
-                                        [
-                                          "Baki Cukai",
-                                          "RM ${remainingTax.toStringAsFixed(2)}",
-                                        ],
-                                      ]),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-
                           // ===== PEMBAHAGIAN (COMPACT) =====
                           _SectionCard(
                             title: 'Pembahagian',
@@ -813,6 +775,107 @@ class _MyTanahCalState extends State<MyTanahCal> {
                                   ),
                                 );
                               }),
+                            ),
+                          ),
+                          // ===== RINGKASAN COMPACT =====
+                          ExpansionTileCard(
+                            initiallyExpanded: false,
+                            elevation: 1.5,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            title: Row(
+                              children: const [
+                                Icon(Icons.summarize_outlined),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Ringkasan Pembahagian',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSectionHeader("1. Pecahan & Baki"),
+                                    _buildSummaryTable([
+                                      [
+                                        "Jumlah Pecahan",
+                                        "${totalFraction.toStringAsFixed(5)} (${(totalFraction * 100).toStringAsFixed(5)}%)",
+                                      ],
+                                      [
+                                        "Baki Pecahan",
+                                        totalFraction <= 1
+                                            ? "${(1 - totalFraction).toStringAsFixed(4)} (${((1 - totalFraction) * 100).toStringAsFixed(4)}%)"
+                                            : "❗ Melebihi 100% ",
+                                      ],
+                                    ], warningIndex: totalFraction > 1 ? 1 : null),
+
+                                    const SizedBox(height: 20),
+
+                                    _buildSectionHeader("2. Luas Kawasan"),
+                                    _buildSummaryTable([
+                                      ["Ekar", totalEkar.toStringAsFixed(7)],
+                                      [
+                                        "Relung",
+                                        totalRelung.toStringAsFixed(7),
+                                      ],
+                                      [
+                                        "Kaki Persegi",
+                                        totalKakiPersegi.toStringAsFixed(7),
+                                      ],
+                                      [
+                                        "Meter Persegi",
+                                        totalMeterPersegi.toStringAsFixed(7),
+                                      ],
+                                    ]),
+
+                                    const SizedBox(height: 20),
+
+                                    if (hasTax) ...[
+                                      _buildSectionHeader("3. Cukai"),
+                                      _buildSummaryTable([
+                                        [
+                                          "Jumlah Cukai",
+                                          "RM ${_cukai.toStringAsFixed(2)}",
+                                        ],
+                                        [
+                                          "Cukai Diagih",
+                                          "RM ${totalTaxAllocated.toStringAsFixed(2)}",
+                                        ],
+                                        [
+                                          "Baki Cukai",
+                                          "RM ${remainingTax.toStringAsFixed(2)}",
+                                        ],
+                                      ]),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 10),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.save),
+                            label: const Text("Simpan Rekod"),
+                            onPressed: () {
+                              _showConfirmationDialog(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
                             ),
                           ),
 
@@ -1039,6 +1102,100 @@ class _MyTanahCalState extends State<MyTanahCal> {
       ),
     );
   }
+
+  void _showConfirmationDialog(BuildContext context) {
+    if (_geranController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Masukkan No Geran dahulu.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Simpan Rekod'),
+        content: const Text(
+          'Adakah anda pasti ingin menyimpan maklumat ini ke pangkalan data?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Cancel
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              print('SAVE');
+              _saveToDatabase(); // Proceed to save
+              Navigator.pop(context); // Close dialog
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _saveToDatabase() async {
+    log('Saving to database...');
+    final double? cukai = double.tryParse(_cukaiController.text);
+    final double? hektar = double.tryParse(_hektarController.text);
+
+    if (cukai == null || hektar == null || divisions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Please fill in cukai, hektar, and at least one pembahagian",
+          ),
+        ),
+      );
+      return;
+    }
+    //print divisions
+    // for (var d in divisions) {
+    //   log("HELLO");
+    //   log(d.numeratorController.text);
+    //   log(d.denominatorController.text);
+    // }
+
+    try {
+      // Save with dummy geran and lot, since you said only cukai/hektar/divisions are stored
+      await SQLiteHelper().saveData(
+        _geranController.text,
+        _lotController.text,
+        cukai,
+        hektar,
+        divisions,
+      );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Data saved successfully")));
+
+      // Optional: clear inputs
+    } catch (e) {
+      log(e.toString());
+      // String error = e.toString();
+      if (e.toString().contains("Geran already exists")) {
+        await SQLiteHelper().updateGeranAndPembahagian(
+          _geranController.text,
+          _lotController.text,
+          cukai,
+          hektar,
+          divisions,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Geran updated successfully")),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error saving: ${e.toString()}")));
+    }
+  }
 }
 
 // ===== Helper UI widgets =====
@@ -1051,10 +1208,10 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 2,
+      elevation: 4,
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+      margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 1),
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Column(
@@ -1075,7 +1232,7 @@ class _SectionCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             child,
           ],
         ),
