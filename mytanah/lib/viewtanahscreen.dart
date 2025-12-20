@@ -158,7 +158,7 @@ class _ViewTanahScreenState extends State<ViewTanahScreen> {
                             );
                           }).toList();
 
-                          Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => MyTanahCal(
@@ -175,6 +175,7 @@ class _ViewTanahScreenState extends State<ViewTanahScreen> {
                               ),
                             ),
                           );
+                          _loadTanah();
                         },
                       ),
                     ],

@@ -125,6 +125,7 @@ class _MyTanahCalState extends State<MyTanahCal> {
     }).toList();
     if (_hektarController.text.isNotEmpty) {
       _updateHektar(_hektarController.text);
+      _updateCukai(_cukaiController.text);
     }
   }
 
