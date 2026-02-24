@@ -147,6 +147,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
     required double totalFraction,
     required double hektar,
     required double cukai,
+    required double totalekar,
+    required double totalrelung
   }) async {
     final doc = pw.Document();
     String fmtD(double v, {int f = 7}) => v.toStringAsFixed(f);
@@ -238,7 +240,12 @@ class _MyTanahCalState extends State<MyTanahCal> {
           ),
           pw.SizedBox(height: 6),
           pw.Text(
-            'Ringkasan: Hektar=${fmtD(hektar)}  |  Jumlah Pecahan=${fmtD(totalFraction)} '
+            'Ringkasan Luas: Hektar: ${fmtD(hektar)} | Ekar: ${fmtD(totalekar)}  | Relong : ${fmtD(totalrelung)} |',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            'Jumlah Pecahan=${fmtD(totalFraction)} '
             '(${(totalFraction * 100).toStringAsFixed(2)}%)'
             '${cukai > 0 ? '  |  Cukai=RM ${fmtMoney(cukai)}  |  Diagih=RM ${fmtMoney(totalTaxAllocated)}  |  Baki=RM ${fmtMoney(remainingTax)}' : ''}',
             style: const pw.TextStyle(fontSize: 10),
@@ -280,11 +287,15 @@ class _MyTanahCalState extends State<MyTanahCal> {
     required double totalFraction,
     required double hektar,
     required double cukai,
+    required double totalekar,
+    required double totalrelung
   }) async {
     final bytes = await _buildPdfBytes(
       totalFraction: totalFraction,
       hektar: hektar,
       cukai: cukai,
+      totalekar: totalekar,
+      totalrelung: totalrelung
     );
     await Printing.layoutPdf(
       onLayout: (format) async => bytes,
@@ -296,11 +307,16 @@ class _MyTanahCalState extends State<MyTanahCal> {
     required double totalFraction,
     required double hektar,
     required double cukai,
+    required double totalekar,
+    required double totalrelung,
   }) async {
     final bytes = await _buildPdfBytes(
       totalFraction: totalFraction,
       hektar: hektar,
       cukai: cukai,
+      totalekar: totalekar,
+      totalrelung: totalrelung
+
     );
     await Printing.sharePdf(
       bytes: bytes,
@@ -406,7 +422,7 @@ class _MyTanahCalState extends State<MyTanahCal> {
                       );
                     } else {
                       //showdialog print pdf
-                      showDialogPrintPDF();
+                      showDialogPrintPDF(totalEkar, totalRelung,);
                     }
                   },
                 ),
@@ -420,6 +436,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
                     ),
                     hektar: _hektar,
                     cukai: _cukai,
+                    totalekar: totalEkar,
+                    totalrelung: totalRelung,
                   ),
                 ),
               ],
@@ -1050,7 +1068,7 @@ class _MyTanahCalState extends State<MyTanahCal> {
     );
   }
 
-  showDialogPrintPDF() {
+  showDialogPrintPDF(double totalEkar, double totalRelung) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1096,6 +1114,8 @@ class _MyTanahCalState extends State<MyTanahCal> {
                 ),
                 hektar: _hektar,
                 cukai: _cukai,
+                totalekar: totalEkar,
+                totalrelung: totalRelung,
               );
             },
           ),
