@@ -240,14 +240,14 @@ class _MyTanahCalState extends State<MyTanahCal> {
           ),
           pw.SizedBox(height: 6),
           pw.Text(
-            'Ringkasan Luas: Hektar: ${fmtD(hektar)} | Ekar: ${fmtD(totalekar)}  | Relong : ${fmtD(totalrelung)} |',
+            'Hektar: ${fmtD(hektar)} | Ekar: ${fmtD(totalekar)}  | Relong : ${fmtD(totalrelung)} |',
             style: const pw.TextStyle(fontSize: 10),
           ),
           pw.SizedBox(height: 6),
           pw.Text(
-            'Jumlah Pecahan=${fmtD(totalFraction)} '
+            'Jumlah Pecahan: ${fmtD(totalFraction)} '
             '(${(totalFraction * 100).toStringAsFixed(2)}%)'
-            '${cukai > 0 ? '  |  Cukai=RM ${fmtMoney(cukai)}  |  Diagih=RM ${fmtMoney(totalTaxAllocated)}  |  Baki=RM ${fmtMoney(remainingTax)}' : ''}',
+            '${cukai > 0 ? '  |  Cukai: RM ${fmtMoney(cukai)}  |  Diagih: RM ${fmtMoney(totalTaxAllocated)}  |  Baki: RM ${fmtMoney(remainingTax)}' : ''}',
             style: const pw.TextStyle(fontSize: 10),
           ),
           pw.SizedBox(height: 12),
