@@ -177,6 +177,13 @@ class _QuickTanahCalcState extends State<QuickTanahCalc> {
           margin: const pw.EdgeInsets.fromLTRB(28, 24, 28, 28),
           orientation: pw.PageOrientation.landscape,
         ),
+        footer: (ctx) => pw.Container(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Text(
+            'Halaman ${ctx.pageNumber}/${ctx.pagesCount}',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+        ),
         build: (context) => [
           pw.Text(
             'Kalkulator Pantas Pembahagian Tanah',
@@ -242,6 +249,26 @@ class _QuickTanahCalcState extends State<QuickTanahCalc> {
                 ),
               ],
             ],
+          ),
+          pw.SizedBox(height: 18),
+          pw.Divider(),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            'Harta Pusaka Kedah Perlis',
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            '019-552 2842 (Hj. Rosli)',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+          pw.Text(
+            '017-403 6962 (Huda)',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+          pw.Text(
+            '013-593 6680 (Hidayah)',
+            style: const pw.TextStyle(fontSize: 10),
           ),
         ],
       ),
