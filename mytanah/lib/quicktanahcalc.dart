@@ -263,7 +263,7 @@ class _QuickTanahCalcState extends State<QuickTanahCalc> {
             style: const pw.TextStyle(fontSize: 10),
           ),
           pw.Text(
-            '017-403 6962 (Huda)',
+            '017-403 6962 (Huda Wahida)',
             style: const pw.TextStyle(fontSize: 10),
           ),
           pw.Text(
